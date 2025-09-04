@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class AuditLogResource extends JsonResource
+{
+    /**
+     * Transform the resource into an array.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'action' => $this->action,
+            'auditable_type' => $this->auditable_type,
+            'auditable_id' => $this->auditable_id,
+            'old_values' => $this->old_values,
+            'new_values' => $this->new_values,
+            'ip_address' => $this->ip_address,
+            'user_agent' => $this->user_agent,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+            
+            // Relationships
+            'tenant' => new TenantResource($this->whenLoaded('tenant')),
+            'user' => new UserResource($this->whenLoaded('user')),
+            
+            // Computed fields
+            'auditable_model' => $this->when(
+                $this->auditable_type,
+                fn() => class_basename($this->auditable_type)
+            ),
+            'changes_count' => $this->when(
+                $this->new_values,
+                fn() => count($this->new_values)
+            ),
+            'has_changes' => $this->when(
+                $this->old_values && $this->new_values,
+                fn() => $this->old_values !== $this->new_values
+            ),
+            'browser' => $this->when(
+                $this->user_agent,
+                fn() => $this->parseBrowser($this->user_agent)
+            ),
+        ];
+    }
+
+    /**
+     * Parse browser from user agent
+     */
+    private function parseBrowser($userAgent)
+    {
+        if (str_contains($userAgent, 'Chrome')) return 'Chrome';
+        if (str_contains($userAgent, 'Firefox')) return 'Firefox';
+        if (str_contains($userAgent, 'Safari')) return 'Safari';
+        if (str_contains($userAgent, 'Edge')) return 'Edge';
+        if (str_contains($userAgent, 'Opera')) return 'Opera';
+        return 'Unknown';
+    }
+}
