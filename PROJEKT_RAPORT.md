@@ -260,6 +260,5 @@ fieldworker-multi-sector/
 
 ---
 
-**Przygotowane przez:** GitHub Copilot  
 **Ostatnia aktualizacja:** 5 września 2025  
 **Commit:** `4e293e1` - feat: Fix and complete middleware unit tests

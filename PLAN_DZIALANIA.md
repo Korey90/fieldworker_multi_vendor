@@ -336,7 +336,6 @@ Tydzień 7:
 
 ---
 
-**Przygotowane przez:** GitHub Copilot  
 **Data:** 5 września 2025  
 **Ostatnia aktualizacja:** commit `4e293e1`
 
