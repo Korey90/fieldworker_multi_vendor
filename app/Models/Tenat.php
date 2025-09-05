@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Tenat extends Model
 {
-    use HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $table = 'tenants';
 
@@ -24,6 +25,45 @@ class Tenat extends Model
     protected $casts = [
         'data' => 'array',
     ];
+
+    /**
+     * Get the tenant's status from data field
+     */
+    public function getStatusAttribute(): string
+    {
+        $data = $this->data ?? [];
+        
+        // Ensure $data is an array
+        if (is_string($data)) {
+            $data = json_decode($data, true) ?? [];
+        }
+        
+        return $data['status'] ?? 'inactive';
+    }
+
+    /**
+     * Set the tenant's status in data field
+     */
+    public function setStatusAttribute($value): void
+    {
+        $data = $this->data ?? [];
+        
+        // Ensure $data is an array
+        if (is_string($data)) {
+            $data = json_decode($data, true) ?? [];
+        }
+        
+        $data['status'] = $value;
+        $this->data = $data;
+    }
+
+    /**
+     * Get tenant settings from data field
+     */
+    public function getSettingsAttribute(): array
+    {
+        return $this->data ?? [];
+    }
 
     public function users(): HasMany
     {

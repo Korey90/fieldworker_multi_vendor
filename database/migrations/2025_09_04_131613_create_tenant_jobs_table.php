@@ -20,6 +20,8 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->uuid('location_id')->nullable();
             $table->foreign('location_id')->references('id')->on('locations')->onDelete('set null');
+            $table->uuid('assigned_user_id')->nullable();
+            $table->foreign('assigned_user_id')->references('id')->on('users')->onDelete('set null');
 
             $table->string('status')->default('pending');
             $table->dateTime('scheduled_at')->nullable();
@@ -36,6 +38,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('jobs');
+        Schema::dropIfExists('tenant_jobs');
     }
 };

@@ -12,11 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasUuids, SoftDeletes;
+    use HasFactory, Notifiable, HasUuids, SoftDeletes, HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -81,5 +82,46 @@ class User extends Authenticatable
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class);
+    }
+
+    /**
+     * Get all permissions for this user (both direct and through roles)
+     */
+    public function getAllPermissions()
+    {
+        $permissions = collect();
+        
+        // Get permissions through roles
+        foreach ($this->roles as $role) {
+            $permissions = $permissions->merge($role->permissions);
+        }
+        
+        // Get direct permissions (if user has direct permissions relation)
+        if (method_exists($this, 'permissions')) {
+            $permissions = $permissions->merge($this->permissions);
+        }
+        
+        return $permissions->unique('id');
+    }
+
+    /**
+     * Check if user has specific permission
+     */
+    public function hasPermission(string $permission): bool
+    {
+        return $this->getAllPermissions()->contains('key', $permission);
+    }
+
+    /**
+     * Check if user has any of the given permissions
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

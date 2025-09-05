@@ -43,50 +43,69 @@ Route::group(['prefix' => 'v1'], function () {
 });
 
 // Protected API routes
-Route::group(['prefix' => 'v1', 'middleware' => ['auth:sanctum']], function () {
+Route::group(['prefix' => 'v1', 'middleware' => ['auth:sanctum', 'tenant']], function () {
     
-    // Tenants management
-    Route::apiResource('tenants', TenantController::class);
-    Route::get('tenants/{id}/stats', [TenantController::class, 'stats']);
+    // Authentication routes - dostępne po zalogowaniu
+    Route::post('auth/logout', [AuthController::class, 'logout']);
+    Route::post('auth/change-password', [AuthController::class, 'changePassword']);
+    Route::get('auth/profile', [AuthController::class, 'profile']);
     
-    // Users management
-    Route::apiResource('users', UserController::class);
-    Route::get('users/{id}/profile', [UserController::class, 'profile']);
-    Route::patch('users/{id}/toggle-status', [UserController::class, 'toggleStatus']);
+    // Tenants management - tylko admin
+    Route::group(['middleware' => ['role:admin']], function () {
+        Route::apiResource('tenants', TenantController::class);
+        Route::get('tenants/{id}/stats', [TenantController::class, 'stats']);
+    });
     
-    // Workers management
-    Route::apiResource('workers', WorkerController::class);
-    Route::get('workers/{id}/stats', [WorkerController::class, 'stats']);
-    Route::get('workers/available', [WorkerController::class, 'available']);
+    // Users management - admin/manager
+    Route::group(['middleware' => ['role:admin,manager']], function () {
+        Route::apiResource('users', UserController::class);
+        Route::get('users/{id}/profile', [UserController::class, 'profile']);
+        Route::patch('users/{id}/toggle-status', [UserController::class, 'toggleStatus']);
+    });
     
-    // Jobs management
-    Route::apiResource('jobs', JobController::class);
-    Route::patch('jobs/{id}/assign', [JobController::class, 'assign']);
-    Route::patch('jobs/{id}/complete', [JobController::class, 'complete']);
-    Route::patch('jobs/{id}/cancel', [JobController::class, 'cancel']);
+    // Workers management - admin/manager
+    Route::group(['middleware' => ['role:admin,manager']], function () {
+        Route::apiResource('workers', WorkerController::class);
+        Route::get('workers/{id}/stats', [WorkerController::class, 'stats']);
+        Route::get('workers/available', [WorkerController::class, 'available']);
+    });
     
-    // Assets management
-    Route::apiResource('assets', AssetController::class);
-    Route::patch('assets/{id}/assign', [AssetController::class, 'assign']);
-    Route::patch('assets/{id}/unassign', [AssetController::class, 'unassign']);
-    Route::get('assets/{id}/history', [AssetController::class, 'history']);
+    // Jobs management - admin/manager
+    Route::group(['middleware' => ['role:admin,manager']], function () {
+        Route::apiResource('jobs', JobController::class);
+        Route::patch('jobs/{id}/assign', [JobController::class, 'assign']);
+        Route::patch('jobs/{id}/complete', [JobController::class, 'complete']);
+        Route::patch('jobs/{id}/cancel', [JobController::class, 'cancel']);
+    });
     
-    // Locations management
-    Route::apiResource('locations', LocationController::class);
-    Route::get('locations/{id}/workers', [LocationController::class, 'workers']);
-    Route::get('locations/{id}/assets', [LocationController::class, 'assets']);
-    Route::get('locations/{id}/jobs', [LocationController::class, 'jobs']);
+    // Assets management - admin/manager
+    Route::group(['middleware' => ['role:admin,manager']], function () {
+        Route::apiResource('assets', AssetController::class);
+        Route::patch('assets/{id}/assign', [AssetController::class, 'assign']);
+        Route::patch('assets/{id}/unassign', [AssetController::class, 'unassign']);
+        Route::get('assets/{id}/history', [AssetController::class, 'history']);
+    });
     
-    // Forms management
-    Route::apiResource('forms', FormController::class);
-    Route::get('forms/{id}/responses', [FormController::class, 'responses']);
-    Route::post('forms/{id}/duplicate', [FormController::class, 'duplicate']);
+    // Locations management - admin/manager
+    Route::group(['middleware' => ['role:admin,manager']], function () {
+        Route::apiResource('locations', LocationController::class);
+        Route::get('locations/{id}/workers', [LocationController::class, 'workers']);
+        Route::get('locations/{id}/assets', [LocationController::class, 'assets']);
+        Route::get('locations/{id}/jobs', [LocationController::class, 'jobs']);
+    });
     
-    // Form responses management
+    // Forms management - admin/manager
+    Route::group(['middleware' => ['role:admin,manager,worker']], function () {
+        Route::apiResource('forms', FormController::class);
+        Route::get('forms/{id}/responses', [FormController::class, 'responses']);
+        Route::post('forms/{id}/duplicate', [FormController::class, 'duplicate']);
+    });
+    
+    // Form responses management - wszyscy zalogowani
     Route::apiResource('form-responses', FormResponseController::class);
     Route::patch('form-responses/{id}/submit', [FormResponseController::class, 'submit']);
     
-    // Notifications management
+    // Notifications management - wszyscy zalogowani
     Route::apiResource('notifications', NotificationController::class)->only(['index', 'show', 'destroy']);
     Route::patch('notifications/{id}/mark-read', [NotificationController::class, 'markAsRead']);
     Route::patch('notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
@@ -124,7 +143,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['auth:sanctum']], function () {
         Route::patch('update-profile', [AuthController::class, 'updateProfile']);
     });
     
-    // Attachments management
+    // Attachments management - wszyscy zalogowani
     Route::group(['prefix' => 'attachments'], function () {
         Route::get('/', [AttachmentController::class, 'index']);
         Route::post('/', [AttachmentController::class, 'store']);
@@ -132,13 +151,17 @@ Route::group(['prefix' => 'v1', 'middleware' => ['auth:sanctum']], function () {
         Route::delete('{attachment}', [AttachmentController::class, 'destroy']);
         Route::get('{attachment}/download', [AttachmentController::class, 'download']);
         Route::get('{attachment}/preview', [AttachmentController::class, 'preview']);
-        Route::post('bulk-upload', [AttachmentController::class, 'bulkUpload']);
-        Route::delete('bulk-delete', [AttachmentController::class, 'bulkDelete']);
-        Route::get('stats/storage', [AttachmentController::class, 'storageStats']);
+        
+        // Admin/Manager only routes
+        Route::group(['middleware' => ['role:admin,manager']], function () {
+            Route::post('bulk-upload', [AttachmentController::class, 'bulkUpload']);
+            Route::delete('bulk-delete', [AttachmentController::class, 'bulkDelete']);
+            Route::get('stats/storage', [AttachmentController::class, 'storageStats']);
+        });
     });
     
-    // Job assignments management
-    Route::group(['prefix' => 'job-assignments'], function () {
+    // Job assignments management - admin/manager
+    Route::group(['prefix' => 'job-assignments', 'middleware' => ['role:admin,manager,worker']], function () {
         Route::get('/', [JobAssignmentController::class, 'index']);
         Route::post('/', [JobAssignmentController::class, 'store']);
         Route::get('{jobAssignment}', [JobAssignmentController::class, 'show']);
@@ -152,11 +175,15 @@ Route::group(['prefix' => 'v1', 'middleware' => ['auth:sanctum']], function () {
         Route::get('worker/{workerId}/assignments', [JobAssignmentController::class, 'workerAssignments']);
         Route::get('job/{jobId}/assignments', [JobAssignmentController::class, 'jobAssignments']);
         Route::get('stats/overview', [JobAssignmentController::class, 'stats']);
-        Route::post('bulk-assign', [JobAssignmentController::class, 'bulkAssign']);
+        
+        // Admin/Manager only routes
+        Route::group(['middleware' => ['role:admin,manager']], function () {
+            Route::post('bulk-assign', [JobAssignmentController::class, 'bulkAssign']);
+        });
     });
     
-    // Tenant quotas management
-    Route::group(['prefix' => 'tenant-quotas'], function () {
+    // Tenant quotas management - admin only
+    Route::group(['prefix' => 'tenant-quotas', 'middleware' => ['role:admin', 'quota']], function () {
         Route::get('/', [TenantQuotaController::class, 'index']);
         Route::post('/', [TenantQuotaController::class, 'store']);
         Route::get('{tenantQuota}', [TenantQuotaController::class, 'show']);
@@ -168,8 +195,8 @@ Route::group(['prefix' => 'v1', 'middleware' => ['auth:sanctum']], function () {
         Route::get('alerts/overview', [TenantQuotaController::class, 'alerts']);
     });
     
-    // Audit logs management
-    Route::group(['prefix' => 'audit-logs'], function () {
+    // Audit logs management - admin/manager
+    Route::group(['prefix' => 'audit-logs', 'middleware' => ['role:admin,manager']], function () {
         Route::get('/', [AuditLogController::class, 'index']);
         Route::post('/', [AuditLogController::class, 'store']);
         Route::get('{auditLog}', [AuditLogController::class, 'show']);
@@ -180,7 +207,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['auth:sanctum']], function () {
         Route::get('search/logs', [AuditLogController::class, 'search']);
     });
     
-    // Digital signatures management
+    // Digital signatures management - wszyscy zalogowani
     Route::group(['prefix' => 'signatures'], function () {
         Route::get('/', [SignatureController::class, 'index']);
         Route::post('/', [SignatureController::class, 'store']);
@@ -189,8 +216,12 @@ Route::group(['prefix' => 'v1', 'middleware' => ['auth:sanctum']], function () {
         Route::delete('{signature}', [SignatureController::class, 'destroy']);
         Route::get('{signature}/download', [SignatureController::class, 'download']);
         Route::post('{signature}/verify', [SignatureController::class, 'verify']);
-        Route::get('stats/overview', [SignatureController::class, 'statistics']);
         Route::get('user/signatures', [SignatureController::class, 'userSignatures']);
-        Route::delete('bulk-delete', [SignatureController::class, 'bulkDelete']);
+        
+        // Admin/Manager only routes
+        Route::group(['middleware' => ['role:admin,manager']], function () {
+            Route::get('stats/overview', [SignatureController::class, 'statistics']);
+            Route::delete('bulk-delete', [SignatureController::class, 'bulkDelete']);
+        });
     });
 });

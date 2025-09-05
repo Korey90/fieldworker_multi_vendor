@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class TenantQuota extends Model
 {
+    use HasFactory;
+    
     protected $primaryKey = 'tenant_id';
     public $incrementing = false;
     protected $keyType = 'string';

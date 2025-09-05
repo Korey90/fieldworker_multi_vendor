@@ -24,11 +24,25 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
+            'tenant_id' => \App\Models\Tenat::factory(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'name' => fake()->name(),
+            'phone' => fake()->phoneNumber(),
+            'is_active' => fake()->boolean(80),
+            'data' => json_encode([
+                'first_name' => fake()->firstName(),
+                'last_name' => fake()->lastName(),
+                'status' => fake()->randomElement(['active', 'inactive', 'suspended']),
+                'last_login_at' => fake()->optional()->dateTimeBetween('-1 month'),
+                'preferences' => [
+                    'language' => 'en',
+                    'timezone' => 'UTC',
+                    'notifications' => true,
+                ],
+            ]),
         ];
     }
 

@@ -1,0 +1,134 @@
+<?php
+
+namespace Tests\Feature\Api;
+
+use App\Models\Worker;
+use Tests\TestCase;
+
+class WorkerManagementTest extends TestCase
+{
+    public function test_admin_can_create_worker()
+    {
+        // Arrange
+        $user = $this->actingAsUser('admin');
+        
+        $workerData = [
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'worker@example.com',
+            'phone' => '+1234567890',
+            'status' => 'active',
+            'hire_date' => '2024-01-01'
+        ];
+
+        // Act
+        $response = $this->postJson('/api/v1/workers', $workerData);
+
+        // Assert
+        $response->assertStatus(201)
+                ->assertJsonStructure([
+                    'data' => ['id', 'first_name', 'last_name', 'email']
+                ]);
+
+        $this->assertDatabaseHas('workers', [
+            'email' => 'worker@example.com',
+            'tenant_id' => $this->tenant->id
+        ]);
+    }
+
+    public function test_worker_cannot_create_worker()
+    {
+        // Arrange
+        $user = $this->actingAsUser('worker');
+        
+        $workerData = [
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'worker@example.com',
+            'phone' => '+1234567890',
+            'status' => 'active',
+            'hire_date' => '2024-01-01'
+        ];
+
+        // Act
+        $response = $this->postJson('/api/v1/workers', $workerData);
+
+        // Assert
+        $response->assertStatus(403);
+    }
+
+    public function test_admin_can_view_workers_list()
+    {
+        // Arrange
+        $user = $this->actingAsUser('admin');
+        Worker::factory()->count(3)->create(['tenant_id' => $this->tenant->id]);
+
+        // Act
+        $response = $this->getJson('/api/v1/workers');
+
+        // Assert
+        $response->assertStatus(200)
+                ->assertJsonStructure([
+                    'data' => ['*' => ['id', 'first_name', 'last_name', 'email']],
+                    'links',
+                    'meta'
+                ]);
+
+        $this->assertEquals(3, count($response->json('data')));
+    }
+
+    public function test_worker_isolation_between_tenants()
+    {
+        // Arrange
+        $secondTenant = $this->createSecondTenant();
+        $user = $this->actingAsUser('admin');
+
+        // Tworzenie pracowników w różnych tenantach
+        Worker::factory()->create(['tenant_id' => $this->tenant->id]);
+        Worker::factory()->create(['tenant_id' => $secondTenant->id]);
+
+        // Act
+        $response = $this->getJson('/api/v1/workers');
+
+        // Assert
+        $response->assertStatus(200);
+        $this->assertEquals(1, count($response->json('data'))); // tylko 1 z tego tenanta
+    }
+
+    public function test_admin_can_update_worker()
+    {
+        // Arrange
+        $user = $this->actingAsUser('admin');
+        $worker = Worker::factory()->create(['tenant_id' => $this->tenant->id]);
+
+        $updateData = [
+            'first_name' => 'Updated Name',
+            'status' => 'inactive'
+        ];
+
+        // Act
+        $response = $this->patchJson("/api/v1/workers/{$worker->id}", $updateData);
+
+        // Assert
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('workers', [
+            'id' => $worker->id,
+            'first_name' => 'Updated Name',
+            'status' => 'inactive'
+        ]);
+    }
+
+    public function test_admin_can_delete_worker()
+    {
+        // Arrange
+        $user = $this->actingAsUser('admin');
+        $worker = Worker::factory()->create(['tenant_id' => $this->tenant->id]);
+
+        // Act
+        $response = $this->deleteJson("/api/v1/workers/{$worker->id}");
+
+        // Assert
+        $response->assertStatus(204);
+        $this->assertSoftDeleted('workers', ['id' => $worker->id]);
+    }
+}
