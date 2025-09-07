@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\Location;
 use App\Models\Job;
 use App\Models\Worker;
@@ -15,7 +15,7 @@ class JobSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenat::all();
+        $tenants = Tenant::all();
 
         foreach ($tenants as $tenant) {
             $locations = Location::where('tenant_id', $tenant->id)->get();
@@ -46,7 +46,7 @@ class JobSeeder extends Seeder
                 $assignedWorkers = $workers->random(rand(1, min(3, $workers->count())));
                 foreach ($assignedWorkers as $worker) {
                     JobAssignment::create([
-                        'tenant_job_id' => $job->id,
+                        'job_id' => $job->id,
                         'worker_id' => $worker->id,
                         'role' => $this->getWorkerRole(),
                         'status' => $this->getAssignmentStatus($status)

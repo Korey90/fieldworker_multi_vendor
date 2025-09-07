@@ -16,12 +16,10 @@ class NotificationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $notifications = Notification::query()
+            ->where('tenant_id', auth()->user()->tenant_id)
             ->with(['user', 'tenant'])
             ->when($request->user_id, function ($query, $userId) {
                 $query->where('user_id', $userId);
-            })
-            ->when($request->tenant_id, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
             })
             ->when($request->type, function ($query, $type) {
                 $query->where('type', $type);
@@ -55,7 +53,9 @@ class NotificationController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $notification = Notification::with(['user', 'tenant'])->findOrFail($id);
+        $notification = Notification::with(['user', 'tenant'])
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->findOrFail($id);
 
         // Mark as read when viewed
         if (!$notification->is_read) {
@@ -75,7 +75,8 @@ class NotificationController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $notification = Notification::findOrFail($id);
+        $notification = Notification::where('tenant_id', auth()->user()->tenant_id)
+            ->findOrFail($id);
         $notification->delete();
 
         return response()->json([
@@ -88,7 +89,8 @@ class NotificationController extends Controller
      */
     public function markAsRead(string $id): JsonResponse
     {
-        $notification = Notification::findOrFail($id);
+        $notification = Notification::where('tenant_id', auth()->user()->tenant_id)
+            ->findOrFail($id);
 
         $notification->update([
             'is_read' => true,
@@ -107,10 +109,13 @@ class NotificationController extends Controller
     public function markAllAsRead(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'user_id' => 'nullable|exists:users,id',
         ]);
 
-        $updatedCount = Notification::where('user_id', $validated['user_id'])
+        $userId = $validated['user_id'] ?? auth()->id();
+
+        $updatedCount = Notification::where('user_id', $userId)
+            ->where('tenant_id', auth()->user()->tenant_id)
             ->where('is_read', false)
             ->update([
                 'is_read' => true,
@@ -128,22 +133,24 @@ class NotificationController extends Controller
     public function stats(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'user_id' => 'nullable|exists:users,id',
         ]);
 
-        $userId = $validated['user_id'];
+        $userId = $validated['user_id'] ?? auth()->id();
+        $tenantId = auth()->user()->tenant_id;
 
         $stats = [
-            'total' => Notification::where('user_id', $userId)->count(),
-            'unread' => Notification::where('user_id', $userId)->where('is_read', false)->count(),
-            'read' => Notification::where('user_id', $userId)->where('is_read', true)->count(),
+            'total' => Notification::where('user_id', $userId)->where('tenant_id', $tenantId)->count(),
+            'unread' => Notification::where('user_id', $userId)->where('tenant_id', $tenantId)->where('is_read', false)->count(),
+            'read' => Notification::where('user_id', $userId)->where('tenant_id', $tenantId)->where('is_read', true)->count(),
             'by_type' => [
-                'emergency' => Notification::where('user_id', $userId)->where('type', 'emergency')->count(),
-                'urgent' => Notification::where('user_id', $userId)->where('type', 'urgent')->count(),
-                'warning' => Notification::where('user_id', $userId)->where('type', 'warning')->count(),
-                'info' => Notification::where('user_id', $userId)->where('type', 'info')->count(),
+                'emergency' => Notification::where('user_id', $userId)->where('tenant_id', $tenantId)->where('type', 'emergency')->count(),
+                'urgent' => Notification::where('user_id', $userId)->where('tenant_id', $tenantId)->where('type', 'urgent')->count(),
+                'warning' => Notification::where('user_id', $userId)->where('tenant_id', $tenantId)->where('type', 'warning')->count(),
+                'info' => Notification::where('user_id', $userId)->where('tenant_id', $tenantId)->where('type', 'info')->count(),
             ],
             'recent' => Notification::where('user_id', $userId)
+                ->where('tenant_id', $tenantId)
                 ->where('created_at', '>=', now()->subDays(7))
                 ->count(),
         ];
@@ -159,10 +166,13 @@ class NotificationController extends Controller
     public function unreadCount(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'user_id' => 'nullable|exists:users,id',
         ]);
 
-        $count = Notification::where('user_id', $validated['user_id'])
+        $userId = $validated['user_id'] ?? auth()->id();
+
+        $count = Notification::where('user_id', $userId)
+            ->where('tenant_id', auth()->user()->tenant_id)
             ->where('is_read', false)
             ->count();
 
@@ -181,9 +191,10 @@ class NotificationController extends Controller
             'message' => 'required|string',
             'type' => 'required|string|in:emergency,urgent,warning,info',
             'user_id' => 'required|exists:users,id',
-            'tenat_id' => 'required|exists:tenats,id',
             'data' => 'nullable|array',
         ]);
+
+        $validated['tenant_id'] = auth()->user()->tenant_id;
 
         $notification = Notification::create($validated);
         $notification->load(['user', 'tenant']);
@@ -204,7 +215,9 @@ class NotificationController extends Controller
             'notification_ids.*' => 'exists:notifications,id',
         ]);
 
-        $deletedCount = Notification::whereIn('id', $validated['notification_ids'])->delete();
+        $deletedCount = Notification::whereIn('id', $validated['notification_ids'])
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->delete();
 
         return response()->json([
             'message' => "Deleted {$deletedCount} notifications"

@@ -27,7 +27,7 @@ class TenantQuotaRequest extends FormRequest
         return [
             'tenant_id' => [
                 'required',
-                'exists:tenats,id',
+                'exists:tenants,id',
                 // Ensure unique combination of tenant_id and quota_type for new records
                 Rule::unique('tenant_quotas', 'tenant_id')
                     ->where('quota_type', $this->input('quota_type'))

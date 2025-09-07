@@ -3,7 +3,8 @@
 namespace Database\Factories;
 
 use App\Models\Location;
-use App\Models\Tenat;
+use App\Models\Tenant;
+use App\Models\Sector;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -26,25 +27,27 @@ class LocationFactory extends Factory
     public function definition(): array
     {
         return [
-            'id' => $this->faker->uuid(),
-            'tenant_id' => Tenat::factory(),
+            'tenant_id' => Tenant::factory(),
+            'sector_id' => \App\Models\Sector::factory(),
             'name' => $this->faker->company() . ' - ' . $this->faker->city(),
             'address' => $this->faker->streetAddress(),
             'city' => $this->faker->city(),
-            'country' => $this->faker->country(),
+            'state' => $this->faker->state(),
             'postal_code' => $this->faker->postcode(),
-            'coordinates' => json_encode([
-                'lat' => $this->faker->latitude(),
-                'lng' => $this->faker->longitude()
-            ]),
-            'contact_info' => json_encode([
-                'phone' => $this->faker->phoneNumber(),
-                'email' => $this->faker->safeEmail(),
-                'contact_person' => $this->faker->name()
-            ]),
-            'is_active' => $this->faker->boolean(90), // 90% chance of being active
-            'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
-            'updated_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
+            'country' => $this->faker->country(),
+            'location_type' => $this->faker->randomElement(['office', 'warehouse', 'retail', 'factory', 'field']),
+            'is_active' => $this->faker->boolean(85), // 85% chance of being active
+            'latitude' => $this->faker->latitude(),
+            'longitude' => $this->faker->longitude(),
+            'data' => [
+                'contact_info' => [
+                    'phone' => $this->faker->phoneNumber(),
+                    'email' => $this->faker->safeEmail(),
+                    'contact_person' => $this->faker->name()
+                ],
+                'capacity' => $this->faker->numberBetween(10, 500),
+                'facilities' => $this->faker->randomElements(['parking', 'wifi', 'kitchen', 'meeting_room'], $this->faker->numberBetween(1, 3))
+            ],
         ];
     }
 

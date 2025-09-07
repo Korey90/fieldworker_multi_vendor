@@ -10,15 +10,20 @@ class WorkerManagementTest extends TestCase
     public function test_admin_can_create_worker()
     {
         // Arrange
-        $user = $this->actingAsUser('admin');
+        $admin = $this->actingAsUser('admin');
+        
+        // Utwórz użytkownika dla worker
+        $workerUser = \App\Models\User::factory()->create([
+            'tenant_id' => $this->tenant->id,
+        ]);
         
         $workerData = [
-            'first_name' => 'John',
-            'last_name' => 'Doe',
-            'email' => 'worker@example.com',
-            'phone' => '+1234567890',
+            'user_id' => $workerUser->id,
+            'tenant_id' => $this->tenant->id,
+            'employee_number' => 'EMP001',
+            'hire_date' => '2024-01-01',
+            'job_title' => 'Construction Worker',
             'status' => 'active',
-            'hire_date' => '2024-01-01'
         ];
 
         // Act
@@ -27,11 +32,11 @@ class WorkerManagementTest extends TestCase
         // Assert
         $response->assertStatus(201)
                 ->assertJsonStructure([
-                    'data' => ['id', 'first_name', 'last_name', 'email']
+                    'data' => ['id', 'employee_number', 'status']
                 ]);
 
         $this->assertDatabaseHas('workers', [
-            'email' => 'worker@example.com',
+            'employee_number' => 'EMP001',
             'tenant_id' => $this->tenant->id
         ]);
     }
@@ -69,8 +74,7 @@ class WorkerManagementTest extends TestCase
         // Assert
         $response->assertStatus(200)
                 ->assertJsonStructure([
-                    'data' => ['*' => ['id', 'first_name', 'last_name', 'email']],
-                    'links',
+                    'data' => ['*' => ['id', 'employee_number', 'status', 'data', 'created_at']],
                     'meta'
                 ]);
 
@@ -102,7 +106,7 @@ class WorkerManagementTest extends TestCase
         $worker = Worker::factory()->create(['tenant_id' => $this->tenant->id]);
 
         $updateData = [
-            'first_name' => 'Updated Name',
+            'employee_number' => 'EMP-UPDATED',
             'status' => 'inactive'
         ];
 
@@ -113,7 +117,7 @@ class WorkerManagementTest extends TestCase
         $response->assertStatus(200);
         $this->assertDatabaseHas('workers', [
             'id' => $worker->id,
-            'first_name' => 'Updated Name',
+            'employee_number' => 'EMP-UPDATED',
             'status' => 'inactive'
         ]);
     }
@@ -128,7 +132,10 @@ class WorkerManagementTest extends TestCase
         $response = $this->deleteJson("/api/v1/workers/{$worker->id}");
 
         // Assert
-        $response->assertStatus(204);
+        $response->assertStatus(200)
+                ->assertJsonStructure([
+                    'message'
+                ]);
         $this->assertSoftDeleted('workers', ['id' => $worker->id]);
     }
 }

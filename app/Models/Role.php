@@ -17,11 +17,12 @@ class Role extends Model
         'tenant_id',
         'name',
         'description',
+        'slug',
     ];
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenat::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     public function permissions(): BelongsToMany

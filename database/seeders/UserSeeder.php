@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
@@ -13,7 +13,7 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenat::all();
+        $tenants = Tenant::all();
 
         foreach ($tenants as $tenant) {
             $roles = Role::where('tenant_id', $tenant->id)->get();

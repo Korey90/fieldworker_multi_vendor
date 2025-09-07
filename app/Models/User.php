@@ -31,7 +31,7 @@ class User extends Authenticatable
         'name',
         'phone',
         'is_active',
-        'data',
+        'data',// {but: 'jkh klhl', oczy: 'niebieskie'}
     ];
 
     /**
@@ -61,7 +61,7 @@ class User extends Authenticatable
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenat::class);
+        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     public function worker(): HasOne
@@ -72,6 +72,11 @@ class User extends Authenticatable
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_roles');
+    }
+
+    public function permissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'user_permissions');
     }
 
     public function notifications(): HasMany
@@ -105,11 +110,27 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user has specific role
+     */
+    public function hasRole(string $role): bool
+    {
+        return $this->roles()->where('slug', $role)->exists();
+    }
+
+    /**
+     * Check if user has any of the given roles
+     */
+    public function hasAnyRole(array $roles): bool
+    {
+        return $this->roles()->whereIn('slug', $roles)->exists();
+    }
+
+    /**
      * Check if user has specific permission
      */
     public function hasPermission(string $permission): bool
     {
-        return $this->getAllPermissions()->contains('key', $permission);
+        return $this->getAllPermissions()->contains('slug', $permission);
     }
 
     /**

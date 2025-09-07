@@ -35,10 +35,7 @@ class FeatureResource extends JsonResource
             ),
             'is_premium' => $this->feature_type === 'premium',
             'is_addon' => $this->feature_type === 'addon',
-            'config_count' => $this->when(
-                $this->config,
-                fn() => count($this->config)
-            ),
+            'config_count' => $this->config ? count($this->config) : 0,
         ];
     }
 }

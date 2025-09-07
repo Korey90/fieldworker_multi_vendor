@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Worker;
 use App\Models\Skill;
@@ -15,7 +15,7 @@ class WorkerSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenat::all();
+        $tenants = Tenant::all();
         $skills = Skill::all();
         $certifications = Certification::all();
 

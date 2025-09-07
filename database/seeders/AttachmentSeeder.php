@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Attachment;
 use App\Models\Job;
@@ -14,7 +14,7 @@ class AttachmentSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenat::all();
+        $tenants = Tenant::all();
 
         foreach ($tenants as $tenant) {
             // Create attachments for jobs

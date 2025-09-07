@@ -24,24 +24,31 @@ class PermissionFactory extends Factory
      */
     public function definition(): array
     {
-        $permissions = [
-            ['key' => 'users.view', 'description' => 'View Users'],
-            ['key' => 'users.create', 'description' => 'Create Users'],
-            ['key' => 'users.edit', 'description' => 'Edit Users'],
-            ['key' => 'users.delete', 'description' => 'Delete Users'],
-            ['key' => 'jobs.view', 'description' => 'View Jobs'],
-            ['key' => 'jobs.create', 'description' => 'Create Jobs'],
-            ['key' => 'jobs.edit', 'description' => 'Edit Jobs'],
-            ['key' => 'jobs.delete', 'description' => 'Delete Jobs'],
-            ['key' => 'admin.settings', 'description' => 'Admin Settings'],
-            ['key' => 'roles.manage', 'description' => 'Manage Roles'],
+        $uniqueId = $this->faker->unique()->numberBetween(1, 999999);
+        $key = 'test.permission.' . $uniqueId;
+        
+        $permissionGroups = [
+            'users',
+            'workers', 
+            'jobs',
+            'assets',
+            'reports',
+            'settings',
+            'system'
         ];
         
-        $permission = $this->faker->randomElement($permissions);
+        $actions = ['view', 'create', 'update', 'delete', 'manage'];
+        $group = $this->faker->randomElement($permissionGroups);
+        $action = $this->faker->randomElement($actions);
         
         return [
-            'key' => $permission['key'],
-            'description' => $permission['description'],
+            'name' => ucfirst($group) . ' ' . ucfirst($action),
+            'key' => $key,
+            'permission_key' => $group . '.' . $action . '.' . $uniqueId, // Make permission_key unique
+            'permission_group' => $group,
+            'slug' => $key,
+            'description' => 'Permission to ' . $action . ' ' . $group,
+            'is_active' => $this->faker->boolean(90),
         ];
     }
 
@@ -51,32 +58,52 @@ class PermissionFactory extends Factory
     public function usersView(): static
     {
         return $this->state(fn (array $attributes) => [
+            'name' => 'Users View',
             'key' => 'users.view',
+            'permission_key' => 'users.view',
+            'permission_group' => 'users',
             'description' => 'Permission to view users',
+            'slug' => 'users.view',
+            'is_active' => true,
         ]);
     }
 
     public function usersCreate(): static
     {
         return $this->state(fn (array $attributes) => [
+            'name' => 'Users Create',
             'key' => 'users.create',
+            'permission_key' => 'users.create',
+            'permission_group' => 'users',
             'description' => 'Permission to create users',
+            'slug' => 'users.create',
+            'is_active' => true,
         ]);
     }
 
     public function usersEdit(): static
     {
         return $this->state(fn (array $attributes) => [
+            'name' => 'Users Edit',
             'key' => 'users.edit',
+            'permission_key' => 'users.edit',
+            'permission_group' => 'users',
             'description' => 'Permission to edit users',
+            'slug' => 'users.edit',
+            'is_active' => true,
         ]);
     }
 
     public function usersDelete(): static
     {
         return $this->state(fn (array $attributes) => [
+            'name' => 'Users Delete',
             'key' => 'users.delete',
+            'permission_key' => 'users.delete',
+            'permission_group' => 'users',
             'description' => 'Permission to delete users',
+            'slug' => 'users.delete',
+            'is_active' => true,
         ]);
     }
 
@@ -86,8 +113,33 @@ class PermissionFactory extends Factory
     public function adminSettings(): static
     {
         return $this->state(fn (array $attributes) => [
+            'name' => 'Admin Settings',
             'key' => 'admin.settings',
+            'permission_key' => 'admin.settings',
+            'permission_group' => 'admin',
             'description' => 'Full admin access to settings',
+            'slug' => 'admin.settings',
+            'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the permission is active.
+     */
+    public function active(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the permission is inactive.
+     */
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => false,
         ]);
     }
 }

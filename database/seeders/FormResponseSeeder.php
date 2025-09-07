@@ -20,7 +20,7 @@ class FormResponseSeeder extends Seeder
         foreach ($completedJobs as $job) {
             // Get workers assigned to this job
             $assignedWorkers = Worker::whereHas('jobAssignments', function ($query) use ($job) {
-                $query->where('tenant_job_id', $job->id);
+                $query->where('job_id', $job->id);
             })->get();
 
             if ($assignedWorkers->isEmpty()) continue;
@@ -40,7 +40,7 @@ class FormResponseSeeder extends Seeder
                 $formResponse = FormResponse::create([
                     'id' => Str::uuid(),
                     'form_id' => $form->id,
-                    'tenant_job_id' => $job->id,
+                    'job_id' => $job->id,
                     'worker_id' => $worker->id,
                     'answers' => $this->generateAnswers($form->schema)
                 ]);

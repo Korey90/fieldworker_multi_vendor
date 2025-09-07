@@ -21,16 +21,56 @@ class UserControllerTest extends TestCase
     {
         parent::setUp();
         
-        // Create roles
-        $this->adminRole = Role::factory()->admin()->create(['tenant_id' => $this->tenant->id]);
-        $this->managerRole = Role::factory()->manager()->create(['tenant_id' => $this->tenant->id]);
-        $this->workerRole = Role::factory()->worker()->create(['tenant_id' => $this->tenant->id]);
+        // Use existing roles from TestCase
+        $this->adminRole = Role::where('tenant_id', $this->tenant->id)->where('slug', 'admin')->first();
+        $this->managerRole = Role::where('tenant_id', $this->tenant->id)->where('slug', 'manager')->first();
+        $this->workerRole = Role::where('tenant_id', $this->tenant->id)->where('slug', 'worker')->first();
 
-        // Create permissions
-        $viewUsersPermission = Permission::factory()->usersView()->create(['tenant_id' => $this->tenant->id]);
-        $createUsersPermission = Permission::factory()->usersCreate()->create(['tenant_id' => $this->tenant->id]);
-        $editUsersPermission = Permission::factory()->usersEdit()->create(['tenant_id' => $this->tenant->id]);
-        $deleteUsersPermission = Permission::factory()->usersDelete()->create(['tenant_id' => $this->tenant->id]);
+        // Create or find existing permissions (global, no tenant_id)
+        $viewUsersPermission = Permission::firstOrCreate(
+            ['key' => 'users.view'],
+            [
+                'name' => 'Users View',
+                'permission_key' => 'users.view',
+                'permission_group' => 'users',
+                'description' => 'Permission to view users', 
+                'slug' => 'users.view',
+                'is_active' => true
+            ]
+        );
+        $createUsersPermission = Permission::firstOrCreate(
+            ['key' => 'users.create'],
+            [
+                'name' => 'Users Create',
+                'permission_key' => 'users.create',
+                'permission_group' => 'users',
+                'description' => 'Permission to create users', 
+                'slug' => 'users.create',
+                'is_active' => true
+            ]
+        );
+        $editUsersPermission = Permission::firstOrCreate(
+            ['key' => 'users.edit'],
+            [
+                'name' => 'Users Edit',
+                'permission_key' => 'users.edit',
+                'permission_group' => 'users',
+                'description' => 'Permission to edit users', 
+                'slug' => 'users.edit',
+                'is_active' => true
+            ]
+        );
+        $deleteUsersPermission = Permission::firstOrCreate(
+            ['key' => 'users.delete'],
+            [
+                'name' => 'Users Delete',
+                'permission_key' => 'users.delete',
+                'permission_group' => 'users',
+                'description' => 'Permission to delete users', 
+                'slug' => 'users.delete',
+                'is_active' => true
+            ]
+        );
 
         // Assign permissions to roles
         $this->adminRole->permissions()->attach([
@@ -72,7 +112,9 @@ class UserControllerTest extends TestCase
                             'id',
                             'name',
                             'email',
-                            'status',
+                            'phone',
+                            'is_active',
+                            'data',
                             'created_at'
                         ]
                     ]
@@ -121,11 +163,13 @@ class UserControllerTest extends TestCase
             'name' => 'New User',
             'email' => 'newuser@example.com',
             'password' => 'password123',
-            'password_confirmation' => 'password123',
-            'first_name' => 'New',
-            'last_name' => 'User',
             'phone' => '+1234567890',
-            'status' => 'active'
+            'is_active' => true,
+            'data' => [
+                'first_name' => 'New',
+                'last_name' => 'User',
+                'status' => 'active'
+            ]
         ];
 
         // Act
@@ -138,7 +182,9 @@ class UserControllerTest extends TestCase
                         'id',
                         'name',
                         'email',
-                        'status'
+                        'phone',
+                        'is_active',
+                        'data',
                     ]
                 ]);
 
@@ -156,19 +202,31 @@ class UserControllerTest extends TestCase
 
         $updateData = [
             'name' => 'Updated Name',
-            'status' => 'inactive'
+            'is_active' => false
         ];
 
         // Act
         $response = $this->putJson("/api/v1/users/{$userToUpdate->id}", $updateData);
 
         // Assert
-        $response->assertStatus(200);
+        $response->assertStatus(200)
+                ->assertJsonStructure([
+                    'message',
+                    'data' => [
+                        'id',
+                        'name',
+                        'email',
+                        'phone',
+                        'is_active',
+                        'data',
+                        'created_at'
+                    ]
+                ]);
         
         $this->assertDatabaseHas('users', [
             'id' => $userToUpdate->id,
             'name' => 'Updated Name',
-            'status' => 'inactive'
+            'is_active' => false
         ]);
     }
 
@@ -182,7 +240,10 @@ class UserControllerTest extends TestCase
         $response = $this->deleteJson("/api/v1/users/{$userToDelete->id}");
 
         // Assert
-        $response->assertStatus(204);
+        $response->assertStatus(200)
+                ->assertJsonStructure([
+                    'message'
+                ]);
         
         $this->assertSoftDeleted('users', [
             'id' => $userToDelete->id
@@ -192,7 +253,7 @@ class UserControllerTest extends TestCase
     public function test_user_cannot_access_different_tenant_users()
     {
         // Arrange
-        $anotherTenant = \App\Models\Tenat::factory()->create();
+        $anotherTenant = \App\Models\Tenant::factory()->create();
         $userFromAnotherTenant = User::factory()->create(['tenant_id' => $anotherTenant->id]);
         
         Sanctum::actingAs($this->adminUser);
@@ -219,7 +280,7 @@ class UserControllerTest extends TestCase
         Sanctum::actingAs($this->workerUser);
 
         // Act
-        $response = $this->getJson("/api/v1/users/{$this->workerUser->id}");
+        $response = $this->getJson("/api/v1/auth/profile");
 
         // Assert
         $response->assertStatus(200)

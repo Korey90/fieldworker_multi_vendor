@@ -26,7 +26,7 @@ class AttachmentController extends Controller
                       ->orWhere('filename', 'like', "%{$search}%");
             })
             ->when($request->tenant_id, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
+                $query->where('tenant_id', $tenantId);
             })
             ->when($request->user_id, function ($query, $userId) {
                 $query->where('user_id', $userId);
@@ -69,7 +69,7 @@ class AttachmentController extends Controller
         
         // Store file
         $path = $file->storeAs(
-            'attachments/' . $validated['tenat_id'],
+            'attachments/' . $validated['tenant_id'],
             $filename,
             'private'
         );
@@ -80,7 +80,7 @@ class AttachmentController extends Controller
             'file_path' => $path,
             'file_size' => $file->getSize(),
             'mime_type' => $file->getMimeType(),
-            'tenat_id' => $validated['tenat_id'],
+            'tenant_id' => $validated['tenant_id'],
             'user_id' => auth()->id(),
             'attachable_type' => $validated['attachable_type'] ?? null,
             'attachable_id' => $validated['attachable_id'] ?? null,
@@ -163,7 +163,7 @@ class AttachmentController extends Controller
     /**
      * Download attachment
      */
-    public function download(string $id): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function download(string $id): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $attachment = Attachment::findOrFail($id);
 
@@ -217,7 +217,7 @@ class AttachmentController extends Controller
         $validated = $request->validate([
             'files' => 'required|array|max:10',
             'files.*' => 'file|max:10240',
-            'tenat_id' => 'required|exists:tenats,id',
+            'tenant_id' => 'required|exists:tenants,id',
             'attachable_type' => 'nullable|string',
             'attachable_id' => 'nullable|integer',
         ]);
@@ -232,7 +232,7 @@ class AttachmentController extends Controller
                 $filename = Str::uuid() . '.' . $extension;
                 
                 $path = $file->storeAs(
-                    'attachments/' . $validated['tenat_id'],
+                    'attachments/' . $validated['tenant_id'],
                     $filename,
                     'private'
                 );
@@ -243,7 +243,7 @@ class AttachmentController extends Controller
                     'file_path' => $path,
                     'file_size' => $file->getSize(),
                     'mime_type' => $file->getMimeType(),
-                    'tenat_id' => $validated['tenat_id'],
+                    'tenant_id' => $validated['tenant_id'],
                     'user_id' => auth()->id(),
                     'attachable_type' => $validated['attachable_type'] ?? null,
                     'attachable_id' => $validated['attachable_id'] ?? null,
@@ -278,7 +278,7 @@ class AttachmentController extends Controller
      */
     private function getTenantStorageUsage($tenantId): float
     {
-        $totalBytes = Attachment::where('tenat_id', $tenantId)->sum('file_size');
+        $totalBytes = Attachment::where('tenant_id', $tenantId)->sum('file_size');
         return $totalBytes / 1024 / 1024; // Convert to MB
     }
 
@@ -290,13 +290,13 @@ class AttachmentController extends Controller
         $tenantId = $request->get('tenant_id');
         
         $stats = [
-            'total_files' => Attachment::when($tenantId, fn($q) => $q->where('tenat_id', $tenantId))->count(),
+            'total_files' => Attachment::when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))->count(),
             'total_size_mb' => $this->getTenantStorageUsage($tenantId),
-            'by_type' => Attachment::when($tenantId, fn($q) => $q->where('tenat_id', $tenantId))
+            'by_type' => Attachment::when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
                 ->selectRaw('mime_type, COUNT(*) as count, SUM(file_size) as total_size')
                 ->groupBy('mime_type')
                 ->get(),
-            'recent_uploads' => Attachment::when($tenantId, fn($q) => $q->where('tenat_id', $tenantId))
+            'recent_uploads' => Attachment::when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
                 ->where('created_at', '>=', now()->subDays(7))
                 ->count(),
         ];

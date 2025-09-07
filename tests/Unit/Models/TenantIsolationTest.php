@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Models;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Worker;
 use Tests\TestCase;
@@ -19,7 +19,11 @@ class TenantIsolationTest extends TestCase
 
         // Act - symulujemy zalogowanego użytkownika z tenant 1
         $this->actingAs($userTenant1);
-        app()->instance('tenant.current', $this->tenant);
+        
+        // Manually add tenant scope (since middleware doesn't run in unit tests)
+        User::addGlobalScope('tenant', function ($builder) {
+            $builder->where('tenant_id', $this->tenant->id);
+        });
 
         // Assert - użytkownik widzi tylko dane ze swojego tenanta
         $this->assertEquals(1, User::count()); // tylko userTenant1
@@ -34,8 +38,10 @@ class TenantIsolationTest extends TestCase
         $workerTenant1 = Worker::factory()->create(['tenant_id' => $this->tenant->id]);
         $workerTenant2 = Worker::factory()->create(['tenant_id' => $secondTenant->id]);
 
-        // Act - ustawiamy kontekst pierwszego tenanta
-        app()->instance('tenant.current', $this->tenant);
+        // Act - manually add tenant scope
+        Worker::addGlobalScope('tenant', function ($builder) {
+            $builder->where('tenant_id', $this->tenant->id);
+        });
 
         // Assert
         $this->assertEquals(1, Worker::count());

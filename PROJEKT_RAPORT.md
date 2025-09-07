@@ -62,7 +62,7 @@
 ### 🗃️ **2. MODELE I MIGRACJE** (100% UKOŃCZONE)
 
 #### Główne Modele:
-- ✅ **Tenat** - Zarządzanie tenant-ami
+- ✅ **Tenant** - Zarządzanie tenant-ami
 - ✅ **User** - System użytkowników
 - ✅ **Role** - System ról
 - ✅ **Permission** - System uprawnień  
@@ -73,7 +73,7 @@
 
 #### Factory System:
 - ✅ **UserFactory** - Generowanie użytkowników testowych
-- ✅ **TenatFactory** - Generowanie tenant-ów testowych
+- ✅ **TenantFactory** - Generowanie tenant-ów testowych
 - ✅ **RoleFactory** - Generowanie ról testowych
 - ✅ **PermissionFactory** - Generowanie uprawnień testowych
 - ✅ **TenantQuotaFactory** - Generowanie limit-ów testowych
@@ -83,7 +83,7 @@
 
 #### API Resources (JSON Transformers):
 - ✅ **UserResource** - Transformacja danych użytkowników
-- ✅ **TenatResource** - Transformacja danych tenant-ów
+- ✅ **TenantResource** - Transformacja danych tenant-ów
 - ✅ **WorkerResource** - Transformacja danych pracowników
 - ✅ **JobResource** - Transformacja danych zadań
 - ✅ **RoleResource, PermissionResource** - System uprawnień

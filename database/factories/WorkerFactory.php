@@ -4,7 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Worker;
 use App\Models\User;
-use App\Models\Tenat;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -31,7 +31,7 @@ class WorkerFactory extends Factory
             'tenant_id' => function (array $attributes) {
                 return User::find($attributes['user_id'])->tenant_id;
             },
-            'employee_id' => $this->faker->unique()->bothify('EMP-####'),
+                        'employee_number' => $this->faker->unique()->bothify('EMP-####'),
             'hire_date' => $this->faker->dateTimeBetween('-5 years', 'now'),
             'hourly_rate' => $this->faker->randomFloat(2, 15, 50),
             'status' => $this->faker->randomElement(['active', 'inactive', 'terminated']),

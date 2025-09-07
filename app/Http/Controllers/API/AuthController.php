@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\TenantRegisterRequest;
 use App\Http\Requests\Auth\ChangePasswordRequest;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
-use App\Models\Tenat;
+use App\Models\Tenant;
+use App\Models\Role;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -32,13 +34,13 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+            return response()->json([
+                'message' => 'The provided credentials are incorrect.'
+            ], 401);
         }
 
         // Check if user is active
-        if ($user->status !== 'active') {
+        if (!$user->is_active) {
             return response()->json([
                 'message' => 'Account is not active'
             ], 403);
@@ -53,6 +55,7 @@ class AuthController extends Controller
         // Create audit log
         AuditLog::create([
             'user_id' => $user->id,
+            'tenant_id' => $user->tenant_id,
             'action' => 'login',
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
@@ -60,8 +63,10 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Login successful',
-            'user' => new UserResource($user),
-            'token' => $token,
+            'data' => [
+                'user' => new UserResource($user),
+                'token' => $token,
+            ],
             'token_type' => 'Bearer',
             'expires_in' => 7 * 24 * 60 * 60, // 7 days in seconds
         ]);
@@ -76,7 +81,7 @@ class AuthController extends Controller
 
         try {
             // Create tenant first
-            $tenant = Tenat::create([
+            $tenant = Tenant::create([
                 'name' => $validated['tenant_name'],
                 'domain' => Str::slug($validated['tenant_name'], '-') . '.localhost',
                 'database_name' => 'tenant_' . Str::random(10),
@@ -89,7 +94,7 @@ class AuthController extends Controller
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
                 'phone' => $validated['phone'] ?? null,
-                'tenat_id' => $tenant->id,
+                'tenant_id' => $tenant->id,
                 'email_verified_at' => now(), // Auto-verify for simplicity
                 'status' => 'active',
             ]);
@@ -113,7 +118,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Registration successful',
-                'user' => new UserResource($user->load('tenat')),
+                'user' => new UserResource($user->load('tenant')),
                 'tenant' => [
                     'id' => $tenant->id,
                     'name' => $tenant->name,
@@ -133,6 +138,75 @@ class AuthController extends Controller
     }
 
     /**
+     * Register a new user in an existing tenant
+     */
+    public function registerInTenant(TenantRegisterRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        try {
+            // Find the tenant by slug
+            $tenant = Tenant::where('slug', $validated['tenant_slug'])->firstOrFail();
+
+            // Create user in existing tenant
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'phone' => $validated['phone'] ?? null,
+                'tenant_id' => $tenant->id,
+                'email_verified_at' => now(), // Auto-verify for simplicity
+                'is_active' => true,
+            ]);
+
+            // Assign default worker role
+            $workerRole = Role::where('tenant_id', $tenant->id)
+                             ->where('slug', 'worker')
+                             ->first();
+            if ($workerRole) {
+                $user->roles()->attach($workerRole->id);
+            }
+
+            // Create token
+            $token = $user->createToken('auth-token', ['*'], now()->addDays(7))->plainTextToken;
+
+            // Create audit log
+            AuditLog::create([
+                'user_id' => $user->id,
+                'tenant_id' => $tenant->id,
+                'action' => 'register_in_tenant',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'metadata' => [
+                    'tenant_slug' => $tenant->slug,
+                    'tenant_name' => $tenant->name,
+                ],
+            ]);
+
+            return response()->json([
+                'message' => 'Registration successful',
+                'data' => [
+                    'user' => new UserResource($user->load('tenant')),
+                    'token' => $token,
+                ],
+                'token_type' => 'Bearer',
+                'expires_in' => 7 * 24 * 60 * 60,
+            ], 201);
+
+        } catch (\Exception $e) {
+            \Log::error('Registration in tenant error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'tenant_slug' => $validated['tenant_slug'] ?? 'unknown'
+            ]);
+            return response()->json([
+                'message' => 'Registration failed',
+                'error' => 'Unable to create account. Please try again.',
+                'debug' => config('app.debug') ? $e->getMessage() : null,
+            ], 422);
+        }
+    }
+
+    /**
      * Logout user and revoke token
      */
     public function logout(Request $request): JsonResponse
@@ -146,6 +220,7 @@ class AuthController extends Controller
         if ($user) {
             AuditLog::create([
                 'user_id' => $user->id,
+                'tenant_id' => $user->tenant_id,
                 'action' => 'logout',
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -163,7 +238,62 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => new UserResource($request->user()->load(['tenat', 'roles', 'permissions']))
+            'user' => new UserResource($request->user()->load(['tenant', 'roles', 'permissions']))
+        ]);
+    }
+
+    /**
+     * Get user profile
+     */
+    public function profile(Request $request): JsonResponse
+    {
+        $user = $request->user()->load([
+            'tenant', 
+            'roles.permissions',
+            'worker.skills',
+            'worker.certifications',
+            'notifications' => function ($query) {
+                $query->where('is_read', false)->latest()->limit(5);
+            }
+        ]);
+
+        return response()->json([
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'is_active' => $user->is_active,
+                'email_verified_at' => $user->email_verified_at,
+                'tenant' => [
+                    'id' => $user->tenant->id,
+                    'name' => $user->tenant->name,
+                    'slug' => $user->tenant->slug ?? null,
+                    'status' => $user->tenant->status,
+                ],
+                'roles' => $user->roles->map(function ($role) {
+                    return [
+                        'id' => $role->id,
+                        'name' => $role->name,
+                        'slug' => $role->slug,
+                        'permissions' => $role->permissions->pluck('slug'),
+                    ];
+                }),
+                'worker' => $user->worker ? [
+                    'id' => $user->worker->id,
+                    'employee_number' => $user->worker->employee_number,
+                    'hire_date' => $user->worker->hire_date,
+                    'status' => $user->worker->status,
+                    'skills' => $user->worker->skills->pluck('name'),
+                    'certifications' => $user->worker->certifications->map(function ($cert) {
+                        return [
+                            'name' => $cert->name,
+                            'expires_at' => $cert->expires_at,
+                        ];
+                    }),
+                ] : null,
+                'unread_notifications_count' => $user->notifications->count(),
+            ]
         ]);
     }
 

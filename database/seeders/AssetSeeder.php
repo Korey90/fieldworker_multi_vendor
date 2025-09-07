@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\Asset;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -11,7 +11,7 @@ class AssetSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenat::all();
+        $tenants = Tenant::all();
 
         foreach ($tenants as $tenant) {
             $assetCount = rand(5, 15);

@@ -35,10 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        // Globalne middleware dla API
-        $middleware->api(prepend: [
-            TenantMiddleware::class,
-        ]);
+        // Globalne middleware dla API - usuwamy TenantMiddleware z globalnych
+        // TenantMiddleware będzie stosowane wybiórczo w routes
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

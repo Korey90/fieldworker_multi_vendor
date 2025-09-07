@@ -24,7 +24,7 @@ class UserController extends Controller
                       ->orWhere('phone', 'like', "%{$search}%");
             })
             ->when($request->tenant_id, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
+                $query->where('tenant_id', $tenantId);
             })
             ->when($request->role_id, function ($query, $roleId) {
                 $query->whereHas('roles', function ($q) use ($roleId) {
@@ -58,11 +58,16 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'phone' => 'nullable|string|max:20',
-            'tenat_id' => 'required|exists:tenats,id',
+            'tenant_id' => 'nullable|exists:tenants,id',
             'is_active' => 'boolean',
             'role_ids' => 'nullable|array',
             'role_ids.*' => 'exists:roles,id',
         ]);
+
+        // Use authenticated user's tenant_id if not provided
+        if (empty($validated['tenant_id'])) {
+            $validated['tenant_id'] = auth()->user()->tenant_id;
+        }
 
         $validated['password'] = Hash::make($validated['password']);
 
@@ -110,7 +115,7 @@ class UserController extends Controller
             'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'sometimes|required|string|min:8',
             'phone' => 'nullable|string|max:20',
-            'tenat_id' => 'sometimes|required|exists:tenats,id',
+            'tenant_id' => 'sometimes|required|exists:tenants,id',
             'is_active' => 'boolean',
             'role_ids' => 'nullable|array',
             'role_ids.*' => 'exists:roles,id',

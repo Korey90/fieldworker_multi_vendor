@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\Feature;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -15,6 +15,7 @@ class TenantSeeder extends Seeder
             [
                 'id' => Str::uuid(),
                 'name' => 'BuildTech Solutions',
+                'slug' => 'buildtech-solutions',
                 'sector' => 'CONST',
                 'data' => [
                     'company_size' => 'large',
@@ -26,6 +27,7 @@ class TenantSeeder extends Seeder
             [
                 'id' => Str::uuid(),
                 'name' => 'ServicePro Maintenance',
+                'slug' => 'servicepro-maintenance',
                 'sector' => 'MAINT',
                 'data' => [
                     'company_size' => 'medium',
@@ -37,6 +39,7 @@ class TenantSeeder extends Seeder
             [
                 'id' => Str::uuid(),
                 'name' => 'QualityCheck Inspections',
+                'slug' => 'qualitycheck-inspections',
                 'sector' => 'INSP',
                 'data' => [
                     'company_size' => 'small',
@@ -48,6 +51,7 @@ class TenantSeeder extends Seeder
             [
                 'id' => Str::uuid(),
                 'name' => 'TechField Services',
+                'slug' => 'techfield-services',
                 'sector' => 'SERV',
                 'data' => [
                     'company_size' => 'medium',
@@ -59,6 +63,7 @@ class TenantSeeder extends Seeder
             [
                 'id' => Str::uuid(),
                 'name' => 'LogiMove Transport',
+                'slug' => 'logimove-transport',
                 'sector' => 'LOG',
                 'data' => [
                     'company_size' => 'large',
@@ -70,7 +75,7 @@ class TenantSeeder extends Seeder
         ];
 
         foreach ($tenants as $tenantData) {
-            $tenant = Tenat::create($tenantData);
+            $tenant = Tenant::create($tenantData);
             
             // Assign random features to each tenant
             $allFeatures = Feature::all();

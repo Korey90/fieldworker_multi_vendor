@@ -16,7 +16,7 @@ class WorkerController extends Controller
     public function index(Request $request): JsonResponse
     {
         $workers = Worker::query()
-            ->with(['user', 'tenant', 'skills', 'certifications', 'location'])
+            ->with(['user', 'tenant', 'skills', 'certifications'])
             ->when($request->search, function ($query, $search) {
                 $query->where('employee_number', 'like', "%{$search}%")
                       ->orWhereHas('user', function ($q) use ($search) {
@@ -25,10 +25,7 @@ class WorkerController extends Controller
                       });
             })
             ->when($request->tenant_id, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
-            })
-            ->when($request->location_id, function ($query, $locationId) {
-                $query->where('location_id', $locationId);
+                $query->where('tenant_id', $tenantId);
             })
             ->when($request->status, function ($query, $status) {
                 $query->where('status', $status);
@@ -59,12 +56,11 @@ class WorkerController extends Controller
     {
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id|unique:workers,user_id',
-            'tenat_id' => 'required|exists:tenats,id',
+            'tenant_id' => 'required|exists:tenants,id',
             'employee_number' => 'required|string|max:50|unique:workers,employee_number',
             'hire_date' => 'required|date',
             'job_title' => 'required|string|max:255',
             'status' => 'required|in:active,inactive,terminated',
-            'location_id' => 'nullable|exists:locations,id',
             'emergency_contact' => 'nullable|array',
             'data' => 'nullable|array',
             'skill_ids' => 'nullable|array',
@@ -72,6 +68,14 @@ class WorkerController extends Controller
             'certification_ids' => 'nullable|array',
             'certification_ids.*' => 'exists:certifications,id',
         ]);
+
+        // Prepare data array with job_title
+        $data = $validated['data'] ?? [];
+        $data['job_title'] = $validated['job_title'];
+        
+        // Remove job_title from validated as it will be stored in data
+        unset($validated['job_title']);
+        $validated['data'] = $data;
 
         $worker = Worker::create($validated);
         
@@ -83,7 +87,7 @@ class WorkerController extends Controller
             $worker->certifications()->sync($validated['certification_ids']);
         }
 
-        $worker->load(['user', 'tenant', 'skills', 'certifications', 'location']);
+        $worker->load(['user', 'tenant', 'skills', 'certifications']);
 
         return response()->json([
             'message' => 'Worker created successfully',
@@ -98,12 +102,9 @@ class WorkerController extends Controller
     {
         $worker = Worker::with([
             'user.roles', 
-            'tenant.sector', 
+            'tenant', 
             'skills', 
-            'certifications',
-            'location',
-            'jobAssignments.job',
-            'assignedAssets'
+            'certifications'
         ])->findOrFail($id);
 
         return response()->json([
@@ -123,7 +124,6 @@ class WorkerController extends Controller
             'hire_date' => 'sometimes|required|date',
             'job_title' => 'sometimes|required|string|max:255',
             'status' => 'sometimes|required|in:active,inactive,terminated',
-            'location_id' => 'nullable|exists:locations,id',
             'emergency_contact' => 'nullable|array',
             'data' => 'nullable|array',
             'skill_ids' => 'nullable|array',
@@ -142,7 +142,7 @@ class WorkerController extends Controller
             $worker->certifications()->sync($validated['certification_ids']);
         }
 
-        $worker->load(['user', 'tenant', 'skills', 'certifications', 'location']);
+        $worker->load(['user', 'tenant', 'skills', 'certifications']);
 
         return response()->json([
             'message' => 'Worker updated successfully',
@@ -201,11 +201,8 @@ class WorkerController extends Controller
     public function available(Request $request): JsonResponse
     {
         $workers = Worker::query()
-            ->with(['user', 'skills', 'location'])
+            ->with(['user', 'skills'])
             ->where('status', 'active')
-            ->when($request->location_id, function ($query, $locationId) {
-                $query->where('location_id', $locationId);
-            })
             ->when($request->skill_ids, function ($query, $skillIds) {
                 $query->whereHas('skills', function ($q) use ($skillIds) {
                     $q->whereIn('skills.id', $skillIds);

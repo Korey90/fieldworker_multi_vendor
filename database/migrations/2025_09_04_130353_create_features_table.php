@@ -13,9 +13,13 @@ return new class extends Migration
     {
         Schema::create('features', function (Blueprint $table) {
             $table->id();
-            $table->string('key')->unique();
+            $table->string('feature_key')->unique();
             $table->string('name');
             $table->text('description')->nullable();
+            $table->enum('feature_type', ['core', 'premium', 'addon'])->default('core');
+            $table->boolean('is_active')->default(true);
+            $table->json('config')->nullable();
+            $table->timestamps();
         });
     }
 

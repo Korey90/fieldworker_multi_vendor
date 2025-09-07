@@ -17,10 +17,8 @@ class FormResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'description' => $this->description,
-            'fields' => $this->fields,
-            'is_active' => $this->is_active,
-            'form_type' => $this->form_type,
+            'type' => $this->type,
+            'schema' => $this->schema,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             
@@ -34,16 +32,12 @@ class FormResource extends JsonResource
                 fn() => $this->responses->count()
             ),
             'fields_count' => $this->when(
-                $this->fields,
-                fn() => count($this->fields)
+                $this->schema && isset($this->schema['fields']),
+                fn() => count($this->schema['fields'])
             ),
             'recent_responses_count' => $this->when(
                 $this->relationLoaded('responses'),
                 fn() => $this->responses->where('created_at', '>=', now()->subDays(7))->count()
-            ),
-            'field_types' => $this->when(
-                $this->fields,
-                fn() => collect($this->fields)->pluck('type')->unique()->values()
             ),
         ];
     }

@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\Role;
 use App\Models\Permission;
 use Illuminate\Database\Seeder;
@@ -11,7 +11,7 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenat::all();
+        $tenants = Tenant::all();
         $permissions = Permission::all();
 
         foreach ($tenants as $tenant) {
@@ -19,6 +19,7 @@ class RoleSeeder extends Seeder
             $adminRole = Role::create([
                 'tenant_id' => $tenant->id,
                 'name' => 'Admin',
+                'slug' => 'admin',
                 'description' => 'Full system access and administration'
             ]);
             $adminRole->permissions()->attach($permissions);
@@ -27,6 +28,7 @@ class RoleSeeder extends Seeder
             $managerRole = Role::create([
                 'tenant_id' => $tenant->id,
                 'name' => 'Manager',
+                'slug' => 'manager',
                 'description' => 'Manage workers, jobs, and operations'
             ]);
             $managerPermissions = $permissions->filter(function ($permission) {
@@ -38,6 +40,7 @@ class RoleSeeder extends Seeder
             $supervisorRole = Role::create([
                 'tenant_id' => $tenant->id,
                 'name' => 'Supervisor',
+                'slug' => 'supervisor',
                 'description' => 'Supervise workers and assign jobs'
             ]);
             $supervisorPermissions = $permissions->filter(function ($permission) {
@@ -50,6 +53,7 @@ class RoleSeeder extends Seeder
             $workerRole = Role::create([
                 'tenant_id' => $tenant->id,
                 'name' => 'Worker',
+                'slug' => 'worker',
                 'description' => 'Field worker with basic access'
             ]);
             $workerPermissions = $permissions->filter(function ($permission) {
@@ -66,6 +70,7 @@ class RoleSeeder extends Seeder
             $clientRole = Role::create([
                 'tenant_id' => $tenant->id,
                 'name' => 'Client',
+                'slug' => 'client',
                 'description' => 'Read-only access for clients'
             ]);
             $clientPermissions = $permissions->filter(function ($permission) {

@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\TenantQuota;
 use Illuminate\Database\Seeder;
 
@@ -10,7 +10,7 @@ class TenantQuotaSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenat::all();
+        $tenants = Tenant::all();
 
         foreach ($tenants as $tenant) {
             $companySize = $tenant->data['company_size'] ?? 'small';

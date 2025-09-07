@@ -35,7 +35,7 @@ class Job extends Model
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenat::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     public function location(): BelongsTo
@@ -45,11 +45,11 @@ class Job extends Model
 
     public function assignments(): HasMany
     {
-        return $this->hasMany(JobAssignment::class, 'tenant_job_id');
+        return $this->hasMany(JobAssignment::class, 'job_id');
     }
 
     public function formResponses(): HasMany
     {
-        return $this->hasMany(FormResponse::class, 'tenant_job_id');
+        return $this->hasMany(FormResponse::class, 'job_id');
     }
 }

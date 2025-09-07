@@ -63,14 +63,7 @@ class JobAssignmentController extends Controller
      */
     public function store(JobAssignmentRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'job_id' => 'required|exists:jobs,id',
-            'worker_id' => 'required|exists:workers,id',
-            'assigned_at' => 'nullable|date',
-            'status' => 'required|in:assigned,in_progress,completed,cancelled',
-            'notes' => 'nullable|string|max:1000',
-            'data' => 'nullable|array',
-        ]);
+        $validated = $request->validated();
 
         // Check if worker is already assigned to this job
         $existingAssignment = JobAssignment::where('job_id', $validated['job_id'])
@@ -137,12 +130,7 @@ class JobAssignmentController extends Controller
     {
         $assignment = JobAssignment::findOrFail($id);
 
-        $validated = $request->validate([
-            'status' => 'sometimes|required|in:assigned,in_progress,completed,cancelled',
-            'notes' => 'nullable|string|max:1000',
-            'completed_at' => 'nullable|date',
-            'data' => 'nullable|array',
-        ]);
+        $validated = $request->validated();
 
         // Handle status transitions
         if (isset($validated['status'])) {
@@ -401,11 +389,15 @@ class JobAssignmentController extends Controller
     {
         $completedAssignments = $query->where('status', 'completed')
             ->whereNotNull('completed_at')
+            ->whereNotNull('assigned_at')
             ->get();
 
         if ($completedAssignments->count() === 0) return null;
 
         $totalHours = $completedAssignments->sum(function ($assignment) {
+            if (!$assignment->completed_at || !$assignment->assigned_at) {
+                return 0;
+            }
             return $assignment->completed_at->diffInHours($assignment->assigned_at);
         });
 

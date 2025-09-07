@@ -2,20 +2,20 @@
 
 namespace Database\Factories;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Tenat>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Tenant>
  */
-class TenatFactory extends Factory
+class TenantFactory extends Factory
 {
     /**
      * The name of the factory's corresponding model.
      *
      * @var string
      */
-    protected $model = Tenat::class;
+    protected $model = Tenant::class;
 
     /**
      * Define the model's default state.
@@ -25,9 +25,11 @@ class TenatFactory extends Factory
     public function definition(): array
     {
         $name = $this->faker->company();
+        $slug = strtolower(str_replace(' ', '-', $name)) . '-' . $this->faker->randomNumber(5);
         
         return [
             'name' => $name,
+            'slug' => $slug,
             'sector' => $this->faker->randomElement(['construction', 'agriculture', 'manufacturing', 'healthcare', 'retail']),
             'data' => json_encode([
                 'max_users' => $this->faker->numberBetween(10, 500),

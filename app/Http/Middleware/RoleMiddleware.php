@@ -13,12 +13,11 @@ class RoleMiddleware
      * Handle an incoming request.
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     * @param  string|array $roles
-     * @param  string $guard (optional)
+     * @param  string ...$roles - Role names passed as separate parameters
      */
-    public function handle(Request $request, Closure $next, string|array $roles, string $guard = 'web'): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        $user = Auth::guard($guard)->user();
+        $user = Auth::guard('sanctum')->user();
 
         if (!$user) {
             return response()->json([
@@ -26,14 +25,9 @@ class RoleMiddleware
             ], 401);
         }
 
-        // Convert string to array
-        if (is_string($roles)) {
-            $roles = explode('|', $roles);
-        }
-
         // Check if user has any of the required roles
         $hasRole = false;
-        $userRoles = $user->roles->pluck('name')->toArray();
+        $userRoles = $user->roles->pluck('slug')->toArray(); // Use slug instead of name
         
         foreach ($roles as $role) {
             if (in_array(trim($role), $userRoles)) {

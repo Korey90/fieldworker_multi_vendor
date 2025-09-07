@@ -16,10 +16,13 @@ class JobAssignmentResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'assigned_at' => $this->assigned_at,
+            'job_id' => $this->job_id,
+            'worker_id' => $this->worker_id,
+            'role' => $this->role,
             'status' => $this->status,
-            'notes' => $this->notes,
+            'assigned_at' => $this->assigned_at,
             'completed_at' => $this->completed_at,
+            'notes' => $this->notes,
             'data' => $this->data,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

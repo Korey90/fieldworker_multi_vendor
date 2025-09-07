@@ -31,55 +31,55 @@ class QuotaMiddleware
             return $next($request);
         }
 
-        $quota = TenantQuota::where('tenant_id', $user->tenant_id)->first();
+        $quota = TenantQuota::forTenant($user->tenant_id)
+            ->byType($quotaType)
+            ->where('status', '!=', 'inactive')
+            ->first();
 
         if (!$quota) {
             // No quota defined, allow operation
             return $next($request);
         }
 
+        // Check if quota is unlimited
+        if ($quota->isUnlimited()) {
+            return $next($request);
+        }
+
         // Check quota based on type
-        switch ($quotaType) {
-            case 'users':
-                if ($quota->max_users !== null) {
-                    $currentUsers = User::where('tenant_id', $user->tenant_id)->count();
-                    if ($currentUsers >= $quota->max_users) {
-                        return response()->json([
-                            'message' => "Tenant users quota exceeded",
-                            'quota_limit' => $quota->max_users,
-                            'current_usage' => $currentUsers,
-                            'quota_type' => $quotaType
-                        ], 429);
-                    }
-                }
-                break;
-                
-            case 'jobs':
-                if ($quota->max_jobs_per_month !== null) {
-                    $currentJobs = Job::where('tenant_id', $user->tenant_id)
-                        ->whereMonth('created_at', now()->month)
-                        ->whereYear('created_at', now()->year)
-                        ->count();
-                    if ($currentJobs >= $quota->max_jobs_per_month) {
-                        return response()->json([
-                            'message' => "Tenant monthly jobs quota exceeded",
-                            'quota_limit' => $quota->max_jobs_per_month,
-                            'current_usage' => $currentJobs,
-                            'quota_type' => $quotaType
-                        ], 429);
-                    }
-                }
-                break;
-                
-            case 'storage':
-                if ($quota->max_storage_mb !== null) {
-                    // Placeholder for storage check logic
-                    // You would implement actual storage calculation here
-                    // For now, we'll just allow the request
-                }
-                break;
+        $currentUsage = $this->getCurrentUsage($quotaType, $user->tenant_id);
+        
+        // Jeśli current_usage w kwot jest wyższy niż rzeczywiste liczenie, użyj tego
+        $effectiveUsage = max($currentUsage, $quota->current_usage);
+        
+        if ($effectiveUsage >= $quota->quota_limit) {
+            return response()->json([
+                'message' => "Tenant {$quotaType} quota exceeded",
+                'quota_limit' => $quota->quota_limit,
+                'current_usage' => $effectiveUsage,
+                'quota_type' => $quotaType
+            ], 429);
         }
 
         return $next($request);
+    }
+
+    /**
+     * Get current usage for quota type
+     */
+    private function getCurrentUsage(string $quotaType, string $tenantId): int
+    {
+        return match ($quotaType) {
+            'users' => User::where('tenant_id', $tenantId)->count(),
+            'jobs' => Job::where('tenant_id', $tenantId)
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count(),
+            'workers' => \App\Models\Worker::where('tenant_id', $tenantId)->count(),
+            'assets' => \App\Models\Asset::where('tenant_id', $tenantId)->count(),
+            // Storage calculation would need more complex logic
+            'storage' => 0, // Placeholder
+            default => 0,
+        };
     }
 }

@@ -18,10 +18,8 @@ class RoleResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
-            'is_active' => $this->is_active,
-            'role_type' => $this->role_type,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'slug' => $this->slug,
+            'tenant_id' => $this->tenant_id,
             
             // Relationships
             'tenant' => new TenantResource($this->whenLoaded('tenant')),
@@ -37,9 +35,9 @@ class RoleResource extends JsonResource
                 $this->relationLoaded('users'),
                 fn() => $this->users->count()
             ),
-            'is_admin' => $this->role_type === 'admin',
-            'is_manager' => $this->role_type === 'manager',
-            'is_worker' => $this->role_type === 'worker',
+            'is_admin' => $this->slug === 'admin',
+            'is_manager' => $this->slug === 'manager',
+            'is_worker' => $this->slug === 'worker',
         ];
     }
 }

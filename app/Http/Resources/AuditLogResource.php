@@ -17,12 +17,19 @@ class AuditLogResource extends JsonResource
         return [
             'id' => $this->id,
             'action' => $this->action,
-            'auditable_type' => $this->auditable_type,
-            'auditable_id' => $this->auditable_id,
+            'entity_type' => $this->entity_type,
+            'entity_id' => $this->entity_id,
+            'model_type' => $this->model_type,
+            'model_id' => $this->model_id,
+            'changes' => $this->changes,
             'old_values' => $this->old_values,
             'new_values' => $this->new_values,
             'ip_address' => $this->ip_address,
             'user_agent' => $this->user_agent,
+            'metadata' => $this->metadata,
+            'user_id' => $this->user_id,
+            'tenant_id' => $this->tenant_id,
+            'description' => $this->description,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             
@@ -32,8 +39,8 @@ class AuditLogResource extends JsonResource
             
             // Computed fields
             'auditable_model' => $this->when(
-                $this->auditable_type,
-                fn() => class_basename($this->auditable_type)
+                $this->model_type,
+                fn() => class_basename($this->model_type)
             ),
             'changes_count' => $this->when(
                 $this->new_values,

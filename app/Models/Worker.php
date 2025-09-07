@@ -18,22 +18,30 @@ class Worker extends Model
         'tenant_id',
         'user_id',
         'employee_number',
+        'hire_date',
+        'hourly_rate',
         'status',
         'data',
     ];
 
     protected $casts = [
         'data' => 'array',
+        'hire_date' => 'datetime',
     ];
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenat::class);
+        return $this->belongsTo(Tenant::class);
     }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function skills(): BelongsToMany

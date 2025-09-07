@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TenantResource;
-use App\Models\Tenat;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -15,17 +15,12 @@ class TenantController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $tenants = Tenat::query()
-            ->with(['sector', 'quota', 'features'])
+        $tenants = Tenant::query()
             ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('domain', 'like', "%{$search}%");
+                $query->where('name', 'like', "%{$search}%");
             })
-            ->when($request->sector_id, function ($query, $sectorId) {
-                $query->where('sector_id', $sectorId);
-            })
-            ->when($request->is_active !== null, function ($query) use ($request) {
-                $query->where('is_active', $request->boolean('is_active'));
+            ->when($request->sector, function ($query, $sector) {
+                $query->where('sector', $sector);
             })
             ->orderBy($request->get('sort', 'name'), $request->get('direction', 'asc'))
             ->paginate($request->get('per_page', 15));
@@ -48,14 +43,14 @@ class TenantController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'domain' => 'required|string|max:255|unique:tenats,domain',
-            'sector_id' => 'required|exists:sectors,id',
+            'sector' => 'required|string|in:construction,agriculture,manufacturing,healthcare,retail',
             'data' => 'nullable|array',
-            'is_active' => 'boolean',
         ]);
+        
+        // Generate slug from name
+        $validated['slug'] = strtolower(str_replace(' ', '-', $validated['name']));
 
-        $tenant = Tenat::create($validated);
-        $tenant->load(['sector', 'quota', 'features']);
+        $tenant = Tenant::create($validated);
 
         return response()->json([
             'message' => 'Tenant created successfully',
@@ -68,15 +63,7 @@ class TenantController extends Controller
      */
     public function show(string $id): JsonResponse
     {
-        $tenant = Tenat::with([
-            'sector', 
-            'quota', 
-            'features', 
-            'users.roles', 
-            'workers.skills', 
-            'locations',
-            'assets'
-        ])->findOrFail($id);
+        $tenant = Tenant::with(['users', 'workers', 'locations', 'assets'])->findOrFail($id);
 
         return response()->json([
             'data' => new TenantResource($tenant)
@@ -88,18 +75,15 @@ class TenantController extends Controller
      */
     public function update(Request $request, string $id): JsonResponse
     {
-        $tenant = Tenat::findOrFail($id);
+        $tenant = Tenant::findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'domain' => 'sometimes|required|string|max:255|unique:tenats,domain,' . $tenant->id,
-            'sector_id' => 'sometimes|required|exists:sectors,id',
+            'sector' => 'sometimes|required|string|in:construction,agriculture,manufacturing,healthcare,retail',
             'data' => 'nullable|array',
-            'is_active' => 'boolean',
         ]);
 
         $tenant->update($validated);
-        $tenant->load(['sector', 'quota', 'features']);
 
         return response()->json([
             'message' => 'Tenant updated successfully',
@@ -112,7 +96,7 @@ class TenantController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $tenant = Tenat::findOrFail($id);
+        $tenant = Tenant::findOrFail($id);
         
         // Check if tenant has users or other dependencies
         if ($tenant->users()->count() > 0) {
@@ -133,16 +117,13 @@ class TenantController extends Controller
      */
     public function stats(string $id): JsonResponse
     {
-        $tenant = Tenat::with(['users', 'workers', 'locations', 'assets', 'jobs'])->findOrFail($id);
+        $tenant = Tenant::with(['users', 'workers', 'locations', 'assets'])->findOrFail($id);
 
         $stats = [
             'users_count' => $tenant->users->count(),
             'workers_count' => $tenant->workers->count(),
             'locations_count' => $tenant->locations->count(),
             'assets_count' => $tenant->assets->count(),
-            'jobs_count' => $tenant->jobs->count(),
-            'active_jobs_count' => $tenant->jobs->where('status', 'active')->count(),
-            'completed_jobs_count' => $tenant->jobs->where('status', 'completed')->count(),
         ];
 
         return response()->json([

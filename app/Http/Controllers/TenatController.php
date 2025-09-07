@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 
-class TenatController extends Controller
+class TenantController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -34,7 +34,7 @@ class TenatController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Tenat $tenat)
+    public function show(Tenant $tenant)
     {
         //
     }
@@ -42,7 +42,7 @@ class TenatController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Tenat $tenat)
+    public function edit(Tenant $tenant)
     {
         //
     }
@@ -50,7 +50,7 @@ class TenatController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Tenat $tenat)
+    public function update(Request $request, Tenant $tenant)
     {
         //
     }
@@ -58,7 +58,7 @@ class TenatController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Tenat $tenat)
+    public function destroy(Tenant $tenant)
     {
         //
     }

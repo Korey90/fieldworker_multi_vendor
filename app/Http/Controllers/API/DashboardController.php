@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Worker;
 use App\Models\Job;
@@ -22,7 +22,7 @@ class DashboardController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $tenantId = $request->get('tenant_id');
+        $tenantId = $request->get('current_tenant_id');
         
         $data = [
             'overview' => $this->getOverviewStats($tenantId),
@@ -40,7 +40,7 @@ class DashboardController extends Controller
      */
     public function stats(Request $request): JsonResponse
     {
-        $tenantId = $request->get('tenant_id');
+        $tenantId = $request->get('current_tenant_id');
         $period = $request->get('period', '30'); // days
         
         $data = [
@@ -48,7 +48,6 @@ class DashboardController extends Controller
             'jobs_by_status' => $this->getJobsByStatus($tenantId, $period),
             'jobs_by_date' => $this->getJobsByDate($tenantId, $period),
             'worker_performance' => $this->getWorkerPerformance($tenantId, $period),
-            'location_stats' => $this->getLocationStats($tenantId),
             'asset_utilization' => $this->getAssetUtilization($tenantId),
             'form_completion_rates' => $this->getFormCompletionRates($tenantId, $period),
         ];
@@ -61,13 +60,13 @@ class DashboardController extends Controller
      */
     public function recentActivity(Request $request): JsonResponse
     {
-        $tenantId = $request->get('tenant_id');
+        $tenantId = $request->get('current_tenant_id');
         $limit = $request->get('limit', 20);
         
         $activities = AuditLog::query()
             ->with(['user', 'tenant'])
             ->when($tenantId, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
+                $query->where('tenant_id', $tenantId);
             })
             ->orderBy('created_at', 'desc')
             ->limit($limit)
@@ -76,8 +75,8 @@ class DashboardController extends Controller
                 return [
                     'id' => $activity->id,
                     'action' => $activity->action,
-                    'model' => class_basename($activity->auditable_type),
-                    'model_id' => $activity->auditable_id,
+                    'model' => class_basename($activity->model_type ?: $activity->entity_type),
+                    'model_id' => $activity->model_id ?: $activity->entity_id,
                     'user' => $activity->user ? $activity->user->name : 'System',
                     'created_at' => $activity->created_at,
                     'description' => $this->getActivityDescription($activity),
@@ -93,11 +92,11 @@ class DashboardController extends Controller
     private function getOverviewStats($tenantId = null)
     {
         $query = function ($model) use ($tenantId) {
-            return $tenantId ? $model::where('tenat_id', $tenantId) : $model::query();
+            return $tenantId ? $model::where('tenant_id', $tenantId) : $model::query();
         };
 
         return [
-            'tenants' => $tenantId ? 1 : Tenat::count(),
+            'tenants' => $tenantId ? 1 : Tenant::count(),
             'users' => $query(User::class)->count(),
             'workers' => $query(Worker::class)->count(),
             'active_workers' => $query(Worker::class)->where('status', 'active')->count(),
@@ -119,7 +118,7 @@ class DashboardController extends Controller
         return Job::query()
             ->with(['location', 'assignments.worker.user'])
             ->when($tenantId, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
+                $query->where('tenant_id', $tenantId);
             })
             ->orderBy('created_at', 'desc')
             ->limit($limit)
@@ -145,7 +144,7 @@ class DashboardController extends Controller
         return Notification::query()
             ->with(['user'])
             ->when($tenantId, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
+                $query->where('tenant_id', $tenantId);
             })
             ->where('is_read', false)
             ->orderBy('created_at', 'desc')
@@ -170,7 +169,7 @@ class DashboardController extends Controller
         $query = Worker::query();
         
         if ($tenantId) {
-            $query->where('tenat_id', $tenantId);
+            $query->where('tenant_id', $tenantId);
         }
 
         return $query
@@ -189,7 +188,7 @@ class DashboardController extends Controller
         $query = Asset::query();
         
         if ($tenantId) {
-            $query->where('tenat_id', $tenantId);
+            $query->where('tenant_id', $tenantId);
         }
 
         return $query
@@ -208,7 +207,7 @@ class DashboardController extends Controller
         $query = Job::query();
         
         if ($tenantId) {
-            $query->where('tenat_id', $tenantId);
+            $query->where('tenant_id', $tenantId);
         }
 
         return $query
@@ -228,7 +227,7 @@ class DashboardController extends Controller
         $query = Job::query();
         
         if ($tenantId) {
-            $query->where('tenat_id', $tenantId);
+            $query->where('tenant_id', $tenantId);
         }
 
         return $query
@@ -250,7 +249,7 @@ class DashboardController extends Controller
             }]);
         
         if ($tenantId) {
-            $query->where('tenat_id', $tenantId);
+            $query->where('tenant_id', $tenantId);
         }
 
         return $query
@@ -280,7 +279,7 @@ class DashboardController extends Controller
             ->with(['workers', 'jobs', 'assets']);
         
         if ($tenantId) {
-            $query->where('tenat_id', $tenantId);
+            $query->where('tenant_id', $tenantId);
         }
 
         return $query
@@ -304,7 +303,7 @@ class DashboardController extends Controller
         $query = Asset::query();
         
         if ($tenantId) {
-            $query->where('tenat_id', $tenantId);
+            $query->where('tenant_id', $tenantId);
         }
 
         $total = $query->count();
@@ -336,14 +335,15 @@ class DashboardController extends Controller
      */
     private function getActivityDescription($activity)
     {
-        $model = class_basename($activity->auditable_type);
+        $model = class_basename($activity->model_type ?: $activity->entity_type);
         $action = $activity->action;
+        $modelId = $activity->model_id ?: $activity->entity_id;
         
         return match($action) {
-            'created' => "Created {$model} #{$activity->auditable_id}",
-            'updated' => "Updated {$model} #{$activity->auditable_id}",
-            'deleted' => "Deleted {$model} #{$activity->auditable_id}",
-            default => "{$action} {$model} #{$activity->auditable_id}",
+            'created' => "Created {$model} #{$modelId}",
+            'updated' => "Updated {$model} #{$modelId}",
+            'deleted' => "Deleted {$model} #{$modelId}",
+            default => "{$action} {$model} #{$modelId}",
         };
     }
 }

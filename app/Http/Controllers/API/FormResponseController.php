@@ -25,7 +25,7 @@ class FormResponseController extends Controller
                 });
             })
             ->when($request->tenant_id, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
+                $query->where('tenant_id', $tenantId);
             })
             ->when($request->form_id, function ($query, $formId) {
                 $query->where('form_id', $formId);
@@ -60,9 +60,9 @@ class FormResponseController extends Controller
     {
         $validated = $request->validate([
             'form_id' => 'required|exists:forms,id',
-            'tenat_id' => 'required|exists:tenats,id',
+            'tenant_id' => 'required|exists:tenants,id',
             'user_id' => 'required|exists:users,id',
-            'job_id' => 'nullable|exists:jobs,id',
+            'job_id' => 'nullable|exists:tenant_jobs,id',
             'response_data' => 'required|array',
             'is_submitted' => 'boolean',
         ]);
@@ -169,7 +169,7 @@ class FormResponseController extends Controller
 
         // Validate response data against form fields
         $form = $response->form;
-        $validationErrors = $this->validateResponseData($validated['response_data'], $form->fields);
+        $validationErrors = $this->validateResponseData($validated['response_data'], $form->schema['fields'] ?? []);
 
         if (!empty($validationErrors)) {
             return response()->json([

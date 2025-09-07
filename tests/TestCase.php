@@ -2,7 +2,7 @@
 
 namespace Tests;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -17,8 +17,9 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
         
         // Tworzymy domyślny tenant dla testów
-        $this->tenant = Tenat::factory()->create([
+        $this->tenant = Tenant::factory()->create([
             'name' => 'Test Tenant',
+            'slug' => 'test-tenant',
             'sector' => 'construction',
             'data' => json_encode([
                 'status' => 'active',
@@ -34,12 +35,48 @@ abstract class TestCase extends BaseTestCase
         
         // Ustawiamy tenant w globalnym kontekście
         app()->instance('tenant.current', $this->tenant);
+        
+        // Tworzymy podstawowe role
+        $this->createBasicRoles();
+    }
+
+    /**
+     * Tworzy podstawowe role dla testów
+     */
+    protected function createBasicRoles(): void
+    {
+        $roles = [
+            [
+                'name' => 'Admin',
+                'slug' => 'admin',
+                'description' => 'Full system access'
+            ],
+            [
+                'name' => 'Manager', 
+                'slug' => 'manager',
+                'description' => 'Manage operations'
+            ],
+            [
+                'name' => 'Worker',
+                'slug' => 'worker', 
+                'description' => 'Basic worker access'
+            ]
+        ];
+
+        foreach ($roles as $roleData) {
+            \App\Models\Role::create([
+                'tenant_id' => $this->tenant->id,
+                'name' => $roleData['name'],
+                'slug' => $roleData['slug'],
+                'description' => $roleData['description']
+            ]);
+        }
     }
 
     /**
      * Utworzenie i uwierzytelnienie użytkownika dla testów
      */
-    protected function actingAsUser($roleName = 'Worker', $tenant = null): User
+    protected function actingAsUser($roleName = 'worker', $tenant = null): User
     {
         $tenant = $tenant ?? $this->tenant;
         
@@ -47,8 +84,8 @@ abstract class TestCase extends BaseTestCase
             'tenant_id' => $tenant->id,
         ]);
 
-        // Przypisanie roli
-        $roleModel = \App\Models\Role::where('name', $roleName)
+        // Przypisanie roli - szukaj po slug
+        $roleModel = \App\Models\Role::where('slug', $roleName)
                                      ->where('tenant_id', $tenant->id)
                                      ->first();
         if ($roleModel) {
@@ -63,9 +100,9 @@ abstract class TestCase extends BaseTestCase
     /**
      * Utworzenie dodatkowego tenanta dla testów izolacji
      */
-    protected function createSecondTenant(): Tenat
+    protected function createSecondTenant(): Tenant
     {
-        return Tenat::factory()->create([
+        return Tenant::factory()->create([
             'name' => 'Second Tenant',
             'slug' => 'second-tenant',
             'status' => 'active'

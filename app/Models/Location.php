@@ -15,8 +15,15 @@ class Location extends Model
 
     protected $fillable = [
         'tenant_id',
+        'sector_id',
         'name',
         'address',
+        'city',
+        'state',
+        'postal_code',
+        'country',
+        'location_type',
+        'is_active',
         'latitude',
         'longitude',
         'data',
@@ -25,12 +32,28 @@ class Location extends Model
     protected $casts = [
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
+        'is_active' => 'boolean',
         'data' => 'array',
     ];
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenat::class);
+        return $this->belongsTo(Tenant::class);
+    }
+
+    public function sector(): BelongsTo
+    {
+        return $this->belongsTo(Sector::class);
+    }
+
+    public function workers(): HasMany
+    {
+        return $this->hasMany(Worker::class);
+    }
+
+    public function assets(): HasMany
+    {
+        return $this->hasMany(Asset::class);
     }
 
     public function jobs(): HasMany

@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Tenat extends Model
+class Tenant extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
 
@@ -20,6 +21,7 @@ class Tenat extends Model
         'name',
         'sector',
         'data',
+        'slug',
     ];
 
     protected $casts = [
@@ -72,51 +74,56 @@ class Tenat extends Model
 
     public function workers(): HasMany
     {
-        return $this->hasMany(Worker::class);
+        return $this->hasMany(Worker::class, 'tenant_id');
     }
 
     public function locations(): HasMany
     {
-        return $this->hasMany(Location::class);
+        return $this->hasMany(Location::class, 'tenant_id');
     }
 
     public function assets(): HasMany
     {
-        return $this->hasMany(Asset::class);
+        return $this->hasMany(Asset::class, 'tenant_id');
     }
 
     public function forms(): HasMany
     {
-        return $this->hasMany(Form::class);
+        return $this->hasMany(Form::class, 'tenant_id');
     }
 
     public function roles(): HasMany
     {
-        return $this->hasMany(Role::class);
+        return $this->hasMany(Role::class, 'tenant_id');
     }
 
     public function jobs(): HasMany
     {
-        return $this->hasMany(Job::class);
+        return $this->hasMany(Job::class, 'tenant_id');
     }
 
     public function auditLogs(): HasMany
     {
-        return $this->hasMany(AuditLog::class);
+        return $this->hasMany(AuditLog::class, 'tenant_id');
     }
 
     public function attachments(): HasMany
     {
-        return $this->hasMany(Attachment::class);
+        return $this->hasMany(Attachment::class, 'tenant_id');
     }
 
     public function quota(): HasOne
     {
-        return $this->hasOne(TenantQuota::class);
+        return $this->hasOne(TenantQuota::class, 'tenant_id');
     }
 
     public function features(): BelongsToMany
     {
         return $this->belongsToMany(Feature::class, 'tenant_features', 'tenant_id', 'feature_id');
+    }
+
+    public function sectorModel(): BelongsTo
+    {
+        return $this->belongsTo(Sector::class, 'sector', 'code');
     }
 }

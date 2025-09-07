@@ -3,7 +3,7 @@
 namespace Tests\Unit\Middleware;
 
 use App\Http\Middleware\TenantMiddleware;
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -26,7 +26,7 @@ class TenantMiddlewareTest extends TestCase
     public function test_middleware_sets_tenant_context_for_authenticated_user()
     {
         // Arrange
-        $tenant = Tenat::factory()->create(['status' => 'active']);
+        $tenant = Tenant::factory()->create(['status' => 'active']);
         $user = User::factory()->create(['tenant_id' => $tenant->id]);
         Auth::login($user);
         
@@ -64,7 +64,7 @@ class TenantMiddlewareTest extends TestCase
     public function test_middleware_fails_for_inactive_tenant()
     {
         // Arrange
-        $inactiveTenant = Tenat::factory()->create(['status' => 'inactive']);
+        $inactiveTenant = Tenant::factory()->create(['status' => 'inactive']);
         $user = User::factory()->create(['tenant_id' => $inactiveTenant->id]);
         Auth::login($user);
         

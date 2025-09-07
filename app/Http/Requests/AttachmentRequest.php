@@ -23,8 +23,12 @@ class AttachmentRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'attachable_type' => [
+            'tenant_id' => [
                 'required',
+                'exists:tenants,id',
+            ],
+            'attachable_type' => [
+                'nullable',
                 'string',
                 Rule::in([
                     'App\Models\Job',
@@ -37,7 +41,7 @@ class AttachmentRequest extends FormRequest
                 ]),
             ],
             'attachable_id' => [
-                'required',
+                'nullable',
                 'integer',
                 'min:1',
             ],

@@ -4,7 +4,7 @@ namespace Tests\Unit\Middleware;
 
 use App\Http\Middleware\QuotaMiddleware;
 use App\Models\User;
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\TenantQuota;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -62,7 +62,7 @@ class QuotaMiddlewareUnitTest extends TestCase
 
     public function test_allows_request_when_no_quota_defined()
     {
-        $tenant = Tenat::factory()->create();
+        $tenant = Tenant::factory()->create();
         $user = User::factory()->create(['tenant_id' => $tenant->id]);
         Auth::login($user);
 
@@ -77,13 +77,10 @@ class QuotaMiddlewareUnitTest extends TestCase
 
     public function test_allows_request_when_under_quota()
     {
-        $tenant = Tenat::factory()->create();
-        // Utwórz quota z rzeczywistą strukturą tabeli
-        TenantQuota::factory()->create([
+        $tenant = Tenant::factory()->create();
+        // Utwórz quota z nową strukturą
+        TenantQuota::factory()->users(5, 1)->create([
             'tenant_id' => $tenant->id,
-            'max_users' => 5,
-            'max_storage_mb' => 1000,
-            'max_jobs_per_month' => 100
         ]);
 
         $user = User::factory()->create(['tenant_id' => $tenant->id]);
@@ -100,12 +97,9 @@ class QuotaMiddlewareUnitTest extends TestCase
 
     public function test_blocks_request_when_quota_exceeded()
     {
-        $tenant = Tenat::factory()->create();
-        TenantQuota::factory()->create([
+        $tenant = Tenant::factory()->create();
+        TenantQuota::factory()->users(1, 0)->create([
             'tenant_id' => $tenant->id,
-            'max_users' => 1, // limit 1 użytkownika
-            'max_storage_mb' => 1000,
-            'max_jobs_per_month' => 100
         ]);
 
         // Tworzymy już jednego usera dla tego tenanta

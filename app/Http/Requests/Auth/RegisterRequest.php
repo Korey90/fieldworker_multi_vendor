@@ -55,7 +55,7 @@ class RegisterRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                'unique:tenats,name',
+                'unique:tenants,name',
                 'regex:/^[a-zA-Z0-9\s\-\_\.]+$/', // Letters, numbers, spaces, hyphens, underscores, dots
             ],
             'phone' => [

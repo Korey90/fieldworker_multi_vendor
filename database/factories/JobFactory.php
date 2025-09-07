@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Job;
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Location;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -29,19 +29,33 @@ class JobFactory extends Factory
     {
         return [
             'id' => $this->faker->uuid(),
-            'tenant_id' => Tenat::factory(),
+            'tenant_id' => Tenant::factory(),
             'location_id' => Location::factory(),
             'assigned_user_id' => User::factory(),
             'title' => $this->faker->jobTitle(),
             'description' => $this->faker->paragraph(),
-            'priority' => $this->faker->randomElement(['low', 'medium', 'high', 'urgent']),
-            'status' => $this->faker->randomElement(['pending', 'in_progress', 'completed', 'cancelled']),
+            'status' => $this->faker->randomElement(['open', 'pending', 'in_progress', 'completed', 'cancelled']),
             'scheduled_at' => $this->faker->optional()->dateTimeBetween('now', '+1 month'),
             'completed_at' => $this->faker->optional()->dateTimeBetween('-1 month', 'now'),
-            'data' => null,
+            'data' => json_encode([
+                'priority' => $this->faker->randomElement(['low', 'medium', 'high', 'urgent']),
+                'requirements' => $this->faker->optional()->sentence(),
+                'notes' => $this->faker->optional()->text(100),
+            ]),
             'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
             'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
+    }
+
+    /**
+     * Indicate that the job is open.
+     */
+    public function open(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'open',
+            'completed_at' => null,
+        ]);
     }
 
     /**

@@ -13,11 +13,8 @@ class QuotaEnforcementTest extends TestCase
         $user = $this->actingAsUser('admin');
         
         // Ustawiamy limit na 2 użytkowników
-        TenantQuota::factory()->create([
+        TenantQuota::factory()->users(2, 2)->create([
             'tenant_id' => $this->tenant->id,
-            'quota_type' => 'users',
-            'limit_value' => 2,
-            'current_usage' => 2 // już na limicie
         ]);
 
         $userData = [
@@ -39,11 +36,8 @@ class QuotaEnforcementTest extends TestCase
         // Arrange
         $user = $this->actingAsUser('admin');
         
-        TenantQuota::factory()->create([
+        TenantQuota::factory()->users(10, 5)->create([
             'tenant_id' => $this->tenant->id,
-            'quota_type' => 'users',
-            'limit_value' => 10,
-            'current_usage' => 5
         ]);
 
         $userData = [
@@ -65,11 +59,8 @@ class QuotaEnforcementTest extends TestCase
         // Arrange
         $user = $this->actingAsUser('admin');
         
-        TenantQuota::factory()->create([
+        TenantQuota::factory()->unlimited('users')->create([
             'tenant_id' => $this->tenant->id,
-            'quota_type' => 'users',
-            'limit_value' => -1, // unlimited
-            'current_usage' => 1000
         ]);
 
         $userData = [
@@ -91,11 +82,8 @@ class QuotaEnforcementTest extends TestCase
         // Arrange
         $user = $this->actingAsUser('admin');
         
-        $quota = TenantQuota::factory()->create([
+        $quota = TenantQuota::factory()->users(10, 5)->create([
             'tenant_id' => $this->tenant->id,
-            'quota_type' => 'users',
-            'limit_value' => 10,
-            'current_usage' => 5
         ]);
 
         // Act
@@ -103,11 +91,20 @@ class QuotaEnforcementTest extends TestCase
 
         // Assert
         $response->assertStatus(200)
-                ->assertJsonFragment([
-                    'quota_type' => 'users',
-                    'current_usage' => 5,
-                    'limit_value' => 10,
-                    'percentage_used' => 50
+                ->assertJsonStructure([
+                    'tenant_id',
+                    'quotas' => [
+                        '*' => [
+                            'quota_type',
+                            'limit',
+                            'current_usage',
+                            'usage_percentage',
+                            'status',
+                            'is_exceeded',
+                        ]
+                    ],
+                    'total_quotas',
+                    'exceeded_quotas',
                 ]);
     }
 }

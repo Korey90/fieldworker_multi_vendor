@@ -18,9 +18,10 @@ class CertificationResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
-            'issuing_authority' => $this->issuing_authority,
+            'issuing_authority' => $this->authority, // Map authority to issuing_authority
             'validity_period_months' => $this->validity_period_months,
             'is_active' => $this->is_active,
+            'tenant_id' => $this->tenant_id,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             

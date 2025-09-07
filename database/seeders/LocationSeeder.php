@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\Location;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -11,7 +11,7 @@ class LocationSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenat::all();
+        $tenants = Tenant::all();
 
         foreach ($tenants as $tenant) {
             $locationCount = rand(3, 8);

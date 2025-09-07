@@ -12,9 +12,9 @@ use Laravel\Sanctum\Sanctum;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
-use Tests\TestCase;
+use Tests\Unit\Middleware\MiddlewareTestCase;
 
-class CheckPermissionsMiddlewareTest extends TestCase
+class CheckPermissionsMiddlewareTest extends MiddlewareTestCase
 {
     private CheckPermissionsMiddleware $middleware;
 
@@ -34,7 +34,8 @@ class CheckPermissionsMiddlewareTest extends TestCase
 
         $role = Role::factory()->create([
             'tenant_id' => $this->tenant->id,
-            'name' => 'Administrator'
+            'name' => 'Test Administrator 1',
+            'slug' => 'test-administrator-1',
         ]);
 
         $role->permissions()->attach($permission->id);
@@ -127,7 +128,8 @@ class CheckPermissionsMiddlewareTest extends TestCase
         // Arrange - Administrator should have access to everything
         $role = Role::factory()->create([
             'tenant_id' => $this->tenant->id,
-            'name' => 'Administrator'
+            'name' => 'Administrator',
+            'slug' => 'administrator',
         ]);
 
         $user = User::factory()->create(['tenant_id' => $this->tenant->id]);

@@ -59,7 +59,7 @@ class CheckPermissionsMiddleware
         }
 
         // Special admin check - if user has Administrator role
-        if ($user->roles->contains('name', 'Administrator')) {
+        if ($user->roles->contains('slug', 'administrator')) {
             return true;
         }
 

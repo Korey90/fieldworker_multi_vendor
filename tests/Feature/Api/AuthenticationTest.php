@@ -12,14 +12,14 @@ class AuthenticationTest extends TestCase
         // Arrange
         $userData = [
             'name' => 'John Doe',
-            'email' => 'john@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'email' => 'john.doe.test@testdomain.example',
+            'password' => 'TestPassword123!SecureUnique',
+            'password_confirmation' => 'TestPassword123!SecureUnique',
             'tenant_slug' => $this->tenant->slug
         ];
 
         // Act
-        $response = $this->postJson('/api/v1/auth/register', $userData);
+        $response = $this->postJson('/api/v1/auth/register-in-tenant', $userData);
 
         // Assert
         $response->assertStatus(201)
@@ -29,7 +29,7 @@ class AuthenticationTest extends TestCase
                 ]);
 
         $this->assertDatabaseHas('users', [
-            'email' => 'john@example.com',
+            'email' => 'john.doe.test@testdomain.example',
             'tenant_id' => $this->tenant->id
         ]);
     }
@@ -40,7 +40,8 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create([
             'tenant_id' => $this->tenant->id,
             'email' => 'john@example.com',
-            'password' => bcrypt('password123')
+            'password' => bcrypt('password123'),
+            'is_active' => true
         ]);
 
         $loginData = [
@@ -65,7 +66,8 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create([
             'tenant_id' => $this->tenant->id,
             'email' => 'john@example.com',
-            'password' => bcrypt('password123')
+            'password' => bcrypt('password123'),
+            'is_active' => true
         ]);
 
         $loginData = [

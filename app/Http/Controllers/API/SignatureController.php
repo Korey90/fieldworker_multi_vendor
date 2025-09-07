@@ -19,7 +19,10 @@ class SignatureController extends Controller
      */
     public function index(Request $request)
     {
+        $tenantId = $request->get('current_tenant_id') ?? auth()->user()->tenant_id;
+        
         $signatures = Signature::with(['user'])
+            ->where('tenant_id', $tenantId)
             ->when($request->input('user_id'), function ($query, $userId) {
                 return $query->where('user_id', $userId);
             })
@@ -56,7 +59,10 @@ class SignatureController extends Controller
         Storage::disk('public')->put($filename, $signatureImage);
 
         $validated['signature_path'] = $filename;
+        $validated['signature_image_path'] = $filename; // Same as signature_path for compatibility
         $validated['signed_at'] = now();
+        $validated['tenant_id'] = auth()->user()->tenant_id;
+        $validated['user_id'] = auth()->id();
         unset($validated['signature_data']);
 
         $signature = Signature::create($validated);
@@ -64,6 +70,7 @@ class SignatureController extends Controller
 
         // Create audit log
         AuditLog::create([
+            'tenant_id' => app('current_tenant')->id,
             'user_id' => auth()->id(),
             'action' => 'signature_created',
             'model_type' => Signature::class,
@@ -85,6 +92,11 @@ class SignatureController extends Controller
      */
     public function show(Signature $signature)
     {
+        // Check tenant access
+        if ($signature->tenant_id !== auth()->user()->tenant_id) {
+            abort(404);
+        }
+        
         $signature->load(['user']);
         return new SignatureResource($signature);
     }
@@ -94,6 +106,11 @@ class SignatureController extends Controller
      */
     public function update(SignatureRequest $request, Signature $signature)
     {
+        // Check tenant access
+        if ($signature->tenant_id !== auth()->user()->tenant_id) {
+            abort(404);
+        }
+        
         // Signatures should generally not be updated to maintain integrity
         $oldValues = $signature->toArray();
         
@@ -107,6 +124,7 @@ class SignatureController extends Controller
 
         // Create audit log for the update
         AuditLog::create([
+            'tenant_id' => app('current_tenant')->id,
             'user_id' => auth()->id(),
             'action' => 'signature_updated',
             'model_type' => Signature::class,
@@ -125,6 +143,11 @@ class SignatureController extends Controller
      */
     public function destroy(Signature $signature)
     {
+        // Check tenant access
+        if ($signature->tenant_id !== auth()->user()->tenant_id) {
+            abort(404);
+        }
+        
         // Only allow deletion by admin users or the signature owner
         if (!auth()->user() || (auth()->id() !== $signature->user_id && !auth()->user()->hasRole('admin'))) {
             return response()->json([
@@ -141,6 +164,7 @@ class SignatureController extends Controller
 
         // Create audit log for the deletion
         AuditLog::create([
+            'tenant_id' => app('current_tenant')->id,
             'user_id' => auth()->id(),
             'action' => 'signature_deleted',
             'model_type' => Signature::class,
@@ -177,6 +201,11 @@ class SignatureController extends Controller
      */
     public function verify(Signature $signature, Request $request)
     {
+        // Check tenant access
+        if ($signature->tenant_id !== auth()->user()->tenant_id) {
+            abort(404);
+        }
+        
         $documentHash = $request->input('document_hash');
         
         if (!$documentHash) {
@@ -187,6 +216,7 @@ class SignatureController extends Controller
         
         // Log verification attempt
         AuditLog::create([
+            'tenant_id' => app('current_tenant')->id,
             'user_id' => auth()->id(),
             'action' => 'signature_verification',
             'model_type' => Signature::class,
@@ -282,6 +312,7 @@ class SignatureController extends Controller
 
             // Create audit log
             AuditLog::create([
+                'tenant_id' => app('current_tenant')->id,
                 'user_id' => auth()->id(),
                 'action' => 'signature_bulk_deleted',
                 'model_type' => Signature::class,

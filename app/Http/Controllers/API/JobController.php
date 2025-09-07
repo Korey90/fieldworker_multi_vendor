@@ -16,14 +16,22 @@ class JobController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $user = auth()->user();
+        
         $jobs = Job::query()
-            ->with(['tenant', 'location', 'assignments.worker.user', 'formResponses', 'attachments'])
+            ->with(['tenant', 'location', 'assignments.worker.user'])
+            ->when($user->hasRole('worker'), function ($query) use ($user) {
+                // Workers can only see jobs assigned to them
+                $query->whereHas('assignments', function ($q) use ($user) {
+                    $q->where('worker_id', $user->worker->id ?? null);
+                });
+            })
             ->when($request->search, function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%");
             })
             ->when($request->tenant_id, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
+                $query->where('tenant_id', $tenantId);
             })
             ->when($request->location_id, function ($query, $locationId) {
                 $query->where('location_id', $locationId);
@@ -59,7 +67,7 @@ class JobController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'tenat_id' => 'required|exists:tenats,id',
+            'tenant_id' => 'required|exists:tenants,id',
             'location_id' => 'required|exists:locations,id',
             'scheduled_at' => 'required|date|after:now',
             'status' => 'required|in:pending,active,completed,cancelled',
@@ -80,13 +88,25 @@ class JobController extends Controller
      */
     public function show(string $id): JsonResponse
     {
+        $user = auth()->user();
         $job = Job::with([
-            'tenant.sector',
+            'tenant',
             'location',
-            'assignments.worker.user',
-            'formResponses.form',
-            'attachments'
+            'assignments.worker.user'
         ])->findOrFail($id);
+
+        // Workers can only view jobs assigned to them
+        if ($user->hasRole('worker')) {
+            $workerAssigned = $job->assignments()
+                ->where('worker_id', $user->worker->id ?? null)
+                ->exists();
+            
+            if (!$workerAssigned) {
+                return response()->json([
+                    'message' => 'Access denied. You can only view jobs assigned to you.'
+                ], 403);
+            }
+        }
 
         return response()->json([
             'data' => new JobResource($job)
@@ -156,9 +176,7 @@ class JobController extends Controller
             JobAssignment::updateOrCreate(
                 ['job_id' => $job->id, 'worker_id' => $workerId],
                 [
-                    'assigned_at' => now(),
                     'status' => 'assigned',
-                    'notes' => $validated['notes'] ?? null,
                 ]
             );
         }
@@ -185,7 +203,7 @@ class JobController extends Controller
         $job->update([
             'status' => 'completed',
             'completed_at' => now(),
-            'data' => array_merge($job->data ?? [], [
+            'data' => array_merge(is_array($job->data) ? $job->data : json_decode($job->data ?? '{}', true), [
                 'completion_notes' => $validated['completion_notes'] ?? null,
                 'completed_by' => auth()->id(),
             ])
@@ -194,7 +212,6 @@ class JobController extends Controller
         // Update all assignments to completed
         $job->assignments()->update([
             'status' => 'completed',
-            'completed_at' => now(),
         ]);
 
         return response()->json([
@@ -214,9 +231,11 @@ class JobController extends Controller
             'cancellation_reason' => 'required|string',
         ]);
 
+        $currentData = is_array($job->data) ? $job->data : [];
+        
         $job->update([
             'status' => 'cancelled',
-            'data' => array_merge($job->data ?? [], [
+            'data' => array_merge($currentData, [
                 'cancellation_reason' => $validated['cancellation_reason'],
                 'cancelled_by' => auth()->id(),
                 'cancelled_at' => now(),

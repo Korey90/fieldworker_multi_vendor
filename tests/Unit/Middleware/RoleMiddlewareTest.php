@@ -5,17 +5,15 @@ namespace Tests\Unit\Middleware;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Role;
 use App\Models\User;
-use App\Models\Tenat;
+use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
-use Tests\TestCase;
+use Laravel\Sanctum\Sanctum;
+use Tests\Unit\Middleware\MiddlewareTestCase;
 
-class RoleMiddlewareTest extends TestCase
+class RoleMiddlewareTest extends MiddlewareTestCase
 {
-    use RefreshDatabase;
-
     private RoleMiddleware $middleware;
 
     protected function setUp(): void
@@ -27,12 +25,12 @@ class RoleMiddlewareTest extends TestCase
     public function test_middleware_allows_user_with_correct_role()
     {
         // Arrange
-        $tenant = Tenat::factory()->create();
-        $role = Role::factory()->create(['name' => 'admin', 'tenant_id' => $tenant->id]);
+        $tenant = Tenant::factory()->create();
+        $role = Role::factory()->create(['name' => 'Admin', 'slug' => 'admin', 'tenant_id' => $tenant->id]);
         $user = User::factory()->create(['tenant_id' => $tenant->id]);
         $user->roles()->attach($role);
         
-        Auth::login($user);
+        Sanctum::actingAs($user);
         $request = Request::create('/api/v1/test');
 
         // Act
@@ -47,18 +45,18 @@ class RoleMiddlewareTest extends TestCase
     public function test_middleware_allows_user_with_one_of_multiple_roles()
     {
         // Arrange
-        $tenant = Tenat::factory()->create();
-        $role = Role::factory()->create(['name' => 'manager', 'tenant_id' => $tenant->id]);
+        $tenant = Tenant::factory()->create();
+        $role = Role::factory()->create(['name' => 'Manager', 'slug' => 'manager', 'tenant_id' => $tenant->id]);
         $user = User::factory()->create(['tenant_id' => $tenant->id]);
         $user->roles()->attach($role);
         
-        Auth::login($user);
+        Sanctum::actingAs($user);
         $request = Request::create('/api/v1/test');
 
-        // Act
+        // Act - przekazujemy role jako separate parameters
         $response = $this->middleware->handle($request, function ($req) {
             return new Response('OK');
-        }, 'admin|manager'); // używamy | zamiast , bo middleware używa explode('|')
+        }, 'admin', 'manager');
 
         // Assert
         $this->assertEquals(200, $response->getStatusCode());
@@ -67,12 +65,12 @@ class RoleMiddlewareTest extends TestCase
     public function test_middleware_denies_user_without_required_role()
     {
         // Arrange
-        $tenant = Tenat::factory()->create();
-        $role = Role::factory()->create(['name' => 'worker', 'tenant_id' => $tenant->id]);
+        $tenant = Tenant::factory()->create();
+        $role = Role::factory()->create(['name' => 'Worker', 'slug' => 'worker', 'tenant_id' => $tenant->id]);
         $user = User::factory()->create(['tenant_id' => $tenant->id]);
         $user->roles()->attach($role);
         
-        Auth::login($user);
+        Sanctum::actingAs($user);
         $request = Request::create('/api/v1/test');
 
         // Act
@@ -91,8 +89,7 @@ class RoleMiddlewareTest extends TestCase
 
     public function test_middleware_denies_unauthenticated_user()
     {
-        // Arrange
-        Auth::logout(); // upewniamy się, że user nie jest zalogowany
+        // Arrange - nie aktywujemy żadnego usera w Sanctum
         $request = Request::create('/api/v1/test');
 
         // Act

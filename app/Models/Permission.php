@@ -10,11 +10,18 @@ class Permission extends Model
 {
     use HasFactory;
     
-    public $timestamps = false;
-
     protected $fillable = [
+        'name',
         'key',
+        'permission_key',
+        'permission_group',
+        'slug',
         'description',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     public function roles(): BelongsToMany

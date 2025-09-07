@@ -24,19 +24,13 @@ class RoleFactory extends Factory
      */
     public function definition(): array
     {
-        $roles = [
-            'Administrator',
-            'Manager', 
-            'Worker',
-            'Supervisor',
-        ];
-        
-        $roleName = $this->faker->randomElement($roles);
+        $roleName = $this->faker->jobTitle();
         
         return [
-            'tenant_id' => \App\Models\Tenat::factory(),
+            'tenant_id' => \App\Models\Tenant::factory(),
             'name' => $roleName,
             'description' => $this->faker->sentence(),
+            'slug' => strtolower(str_replace(' ', '-', $roleName)) . '-' . $this->faker->unique()->randomNumber(3),
         ];
     }
 

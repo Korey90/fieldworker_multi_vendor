@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
-use App\Models\Tenat;
+use App\Models\Tenant;
 use Symfony\Component\HttpFoundation\Response;
 
 class TenantMiddleware
@@ -20,7 +20,7 @@ class TenantMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         // Get tenant from authenticated user
-        $user = Auth::user();
+        $user = Auth::guard('sanctum')->user();
         
         if (!$user || !$user->tenant_id) {
             return response()->json([
@@ -28,7 +28,7 @@ class TenantMiddleware
             ], 403);
         }
 
-        $tenant = Tenat::find($user->tenant_id);
+        $tenant = Tenant::find($user->tenant_id);
         
         if (!$tenant) {
             return response()->json([
@@ -58,7 +58,7 @@ class TenantMiddleware
     /**
      * Add global scope to isolate tenant data
      */
-    private function addTenantScope(Tenat $tenant): void
+    private function addTenantScope(Tenant $tenant): void
     {
         // Add global scopes for models that have tenant_id
         $modelsWithTenantId = [
@@ -68,44 +68,28 @@ class TenantMiddleware
             \App\Models\Asset::class,
             \App\Models\Form::class,
             \App\Models\FormResponse::class,
-            \App\Models\Notification::class,
+            \App\Models\Attachment::class,
             \App\Models\TenantQuota::class,
+            \App\Models\AuditLog::class,
+            \App\Models\Notification::class,
         ];
 
         foreach ($modelsWithTenantId as $model) {
             $model::addGlobalScope('tenant', function ($builder) use ($tenant) {
-                $builder->where('tenat_id', $tenant->id);
+                $builder->where('tenant_id', $tenant->id);
             });
         }
 
         // Add scope for models that reference users (indirect tenant relationship)
         \App\Models\JobAssignment::addGlobalScope('tenant', function ($builder) use ($tenant) {
             $builder->whereHas('job', function ($query) use ($tenant) {
-                $query->where('tenat_id', $tenant->id);
-            });
-        });
-
-        \App\Models\Attachment::addGlobalScope('tenant', function ($builder) use ($tenant) {
-            $builder->where(function ($query) use ($tenant) {
-                $query->whereHasMorph('attachable', [\App\Models\Job::class], function ($q) use ($tenant) {
-                    $q->where('tenat_id', $tenant->id);
-                })->orWhereHasMorph('attachable', [\App\Models\Worker::class], function ($q) use ($tenant) {
-                    $q->where('tenat_id', $tenant->id);
-                })->orWhereHasMorph('attachable', [\App\Models\User::class], function ($q) use ($tenant) {
-                    $q->where('tenat_id', $tenant->id);
-                });
+                $query->where('tenant_id', $tenant->id);
             });
         });
 
         \App\Models\Signature::addGlobalScope('tenant', function ($builder) use ($tenant) {
             $builder->whereHas('user', function ($query) use ($tenant) {
-                $query->where('tenat_id', $tenant->id);
-            });
-        });
-
-        \App\Models\AuditLog::addGlobalScope('tenant', function ($builder) use ($tenant) {
-            $builder->whereHas('user', function ($query) use ($tenant) {
-                $query->where('tenat_id', $tenant->id);
+                $query->where('tenant_id', $tenant->id);
             });
         });
     }

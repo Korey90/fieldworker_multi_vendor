@@ -15,7 +15,8 @@ class AuditLogController extends Controller
      */
     public function index(Request $request)
     {
-        $logs = AuditLog::with(['user'])
+        $logs = AuditLog::where('tenant_id', auth()->user()->tenant_id)
+            ->with(['user'])
             ->when($request->input('user_id'), function ($query, $userId) {
                 return $query->where('user_id', $userId);
             })
@@ -52,13 +53,19 @@ class AuditLogController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'action' => 'required|string|max:255',
             'model_type' => 'nullable|string|max:255',
-            'model_id' => 'nullable|integer',
+            'model_id' => 'nullable|string',
+            'entity_type' => 'nullable|string|max:255',
+            'entity_id' => 'nullable|string',
             'old_values' => 'nullable|array',
             'new_values' => 'nullable|array',
+            'changes' => 'nullable|array',
             'ip_address' => 'nullable|ip',
             'user_agent' => 'nullable|string',
             'metadata' => 'nullable|array',
         ]);
+
+        // Add tenant_id automatically
+        $validated['tenant_id'] = auth()->user()->tenant_id;
 
         // Add IP address and user agent if not provided
         if (!isset($validated['ip_address'])) {
@@ -80,6 +87,11 @@ class AuditLogController extends Controller
      */
     public function show(AuditLog $auditLog)
     {
+        // Check if audit log belongs to user's tenant
+        if ($auditLog->tenant_id !== auth()->user()->tenant_id) {
+            return response()->json(['error' => 'Audit log not found'], 404);
+        }
+
         $auditLog->load(['user']);
         return new AuditLogResource($auditLog);
     }
@@ -100,6 +112,11 @@ class AuditLogController extends Controller
      */
     public function destroy(AuditLog $auditLog)
     {
+        // Check tenant access
+        if ($auditLog->tenant_id !== auth()->user()->tenant_id) {
+            abort(404);
+        }
+        
         // Only allow deletion by admin users and log the deletion
         if (!auth()->user() || !auth()->user()->hasRole('admin')) {
             return response()->json([
@@ -109,6 +126,7 @@ class AuditLogController extends Controller
 
         // Create a log entry for the deletion
         AuditLog::create([
+            'tenant_id' => auth()->user()->tenant_id,
             'user_id' => auth()->id(),
             'action' => 'deleted_audit_log',
             'model_type' => AuditLog::class,
@@ -134,7 +152,8 @@ class AuditLogController extends Controller
         $dateFrom = $request->input('date_from', now()->subDays(30));
         $dateTo = $request->input('date_to', now());
 
-        $query = AuditLog::whereBetween('created_at', [$dateFrom, $dateTo]);
+        $query = AuditLog::where('tenant_id', auth()->user()->tenant_id)
+            ->whereBetween('created_at', [$dateFrom, $dateTo]);
 
         $stats = [
             'total_logs' => $query->count(),
@@ -157,64 +176,34 @@ class AuditLogController extends Controller
     }
 
     /**
-     * Get user activity
+     * Get user activity logs
      */
-    public function userActivity(Request $request)
+    public function userActivity(Request $request, $userId)
     {
-        $userId = $request->input('user_id');
-        $dateFrom = $request->input('date_from', now()->subDays(7));
-        $dateTo = $request->input('date_to', now());
-
-        if (!$userId) {
-            return response()->json(['error' => 'User ID is required'], 400);
-        }
-
-        $activity = AuditLog::where('user_id', $userId)
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
+        $limit = $request->input('limit', 50);
+        
+        $auditLogs = AuditLog::where('tenant_id', auth()->user()->tenant_id)
+            ->where('user_id', $userId)
             ->with(['user'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate($limit);
 
-        $summary = [
-            'user_id' => $userId,
-            'total_actions' => $activity->count(),
-            'actions_breakdown' => $activity->groupBy('action')->map->count(),
-            'models_affected' => $activity->whereNotNull('model_type')->groupBy('model_type')->map->count(),
-            'first_activity' => $activity->last()?->created_at,
-            'last_activity' => $activity->first()?->created_at,
-            'unique_ips' => $activity->pluck('ip_address')->unique()->count(),
-        ];
-
-        return response()->json([
-            'summary' => $summary,
-            'activity' => AuditLogResource::collection($activity->take(50)), // Last 50 actions
-        ]);
+        return AuditLogResource::collection($auditLogs);
     }
 
     /**
      * Get model history
      */
-    public function modelHistory(Request $request)
+    public function modelHistory(Request $request, $modelType, $modelId)
     {
-        $modelType = $request->input('model_type');
-        $modelId = $request->input('model_id');
-
-        if (!$modelType || !$modelId) {
-            return response()->json(['error' => 'Model type and ID are required'], 400);
-        }
-
-        $history = AuditLog::where('model_type', $modelType)
+        $auditLogs = AuditLog::where('tenant_id', auth()->user()->tenant_id)
+            ->where('model_type', $modelType)
             ->where('model_id', $modelId)
             ->with(['user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json([
-            'model_type' => $modelType,
-            'model_id' => $modelId,
-            'total_changes' => $history->count(),
-            'history' => AuditLogResource::collection($history),
-        ]);
+        return AuditLogResource::collection($auditLogs);
     }
 
     /**
@@ -222,24 +211,41 @@ class AuditLogController extends Controller
      */
     public function search(Request $request)
     {
-        $query = $request->input('query');
-        
-        if (!$query) {
-            return response()->json(['error' => 'Search query is required'], 400);
-        }
+        $query = $request->input('q');
+        $action = $request->input('action');
+        $modelType = $request->input('model_type');
+        $userId = $request->input('user_id');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $limit = $request->input('limit', 50);
 
-        $logs = AuditLog::where(function ($q) use ($query) {
-            $q->where('action', 'like', "%{$query}%")
-              ->orWhere('model_type', 'like', "%{$query}%")
-              ->orWhere('ip_address', 'like', "%{$query}%")
-              ->orWhereJsonContains('old_values', $query)
-              ->orWhereJsonContains('new_values', $query)
-              ->orWhereJsonContains('metadata', $query);
-        })
-        ->with(['user'])
-        ->orderBy('created_at', 'desc')
-        ->paginate($request->input('per_page', 15));
+        $auditLogs = AuditLog::where('tenant_id', auth()->user()->tenant_id)
+            ->when($query, function ($q) use ($query) {
+                $q->where(function ($subQuery) use ($query) {
+                    $subQuery->where('action', 'like', "%{$query}%")
+                        ->orWhere('ip_address', 'like', "%{$query}%")
+                        ->orWhere('user_agent', 'like', "%{$query}%");
+                });
+            })
+            ->when($action, function ($q) use ($action) {
+                $q->where('action', $action);
+            })
+            ->when($modelType, function ($q) use ($modelType) {
+                $q->where('model_type', $modelType);
+            })
+            ->when($userId, function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            })
+            ->when($dateFrom, function ($q) use ($dateFrom) {
+                $q->where('created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($q) use ($dateTo) {
+                $q->where('created_at', '<=', $dateTo);
+            })
+            ->with(['user'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($limit);
 
-        return AuditLogResource::collection($logs);
+        return AuditLogResource::collection($auditLogs);
     }
 }

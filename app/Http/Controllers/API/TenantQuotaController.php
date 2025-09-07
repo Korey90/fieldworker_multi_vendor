@@ -77,7 +77,7 @@ class TenantQuotaController extends Controller
      */
     public function usage(Request $request)
     {
-        $tenantId = $request->input('tenant_id');
+        $tenantId = $request->input('tenant_id') ?? auth()->user()?->tenant_id;
         
         if (!$tenantId) {
             return response()->json(['error' => 'Tenant ID is required'], 400);

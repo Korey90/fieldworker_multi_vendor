@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenat;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\AuditLog;
 use Illuminate\Database\Seeder;
@@ -12,7 +12,7 @@ class AuditLogSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenat::all();
+        $tenants = Tenant::all();
 
         foreach ($tenants as $tenant) {
             $users = User::where('tenant_id', $tenant->id)->get();

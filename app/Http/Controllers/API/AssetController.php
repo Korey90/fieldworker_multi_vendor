@@ -24,7 +24,7 @@ class AssetController extends Controller
                       ->orWhere('asset_type', 'like', "%{$search}%");
             })
             ->when($request->tenant_id, function ($query, $tenantId) {
-                $query->where('tenat_id', $tenantId);
+                $query->where('tenant_id', $tenantId);
             })
             ->when($request->location_id, function ($query, $locationId) {
                 $query->where('location_id', $locationId);
@@ -57,7 +57,7 @@ class AssetController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'tenat_id' => 'required|exists:tenats,id',
+            'tenant_id' => 'required|exists:tenants,id',
             'location_id' => 'required|exists:locations,id',
             'asset_type' => 'required|string|max:100',
             'serial_number' => 'nullable|string|max:100|unique:assets,serial_number',
@@ -83,7 +83,7 @@ class AssetController extends Controller
     public function show(string $id): JsonResponse
     {
         $asset = Asset::with([
-            'tenant.sector',
+            'tenant',
             'location',
             'currentAssignment.user',
             'auditLogs.user'

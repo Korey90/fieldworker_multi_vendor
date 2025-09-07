@@ -15,7 +15,7 @@ class JobAssignmentRequest extends FormRequest
     public function authorize(): bool
     {
         return auth()->check() && (
-            auth()->user()->hasRole(['admin', 'manager']) || 
+            auth()->user()->hasAnyRole(['admin', 'manager']) || 
             auth()->user()->hasPermission('manage_job_assignments')
         );
     }
@@ -28,15 +28,38 @@ class JobAssignmentRequest extends FormRequest
     public function rules(): array
     {
         $jobAssignmentId = $this->route('jobAssignment')?->id;
+        $isUpdate = $this->isMethod('PUT') || $this->isMethod('PATCH');
 
         return [
             'job_id' => [
-                'required',
-                'exists:jobs,id',
+                $isUpdate ? 'sometimes' : 'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    if (!$value) return; // Skip validation if empty on update
+                    
+                    $job = \App\Models\Job::where('id', $value)
+                        ->where('tenant_id', auth()->user()->tenant_id)
+                        ->first();
+                    
+                    if (!$job) {
+                        $fail('The selected job does not exist.');
+                    }
+                },
             ],
             'worker_id' => [
-                'required',
-                'exists:workers,id',
+                $isUpdate ? 'sometimes' : 'required',
+                'string',
+                function ($attribute, $value, $fail) {
+                    if (!$value) return; // Skip validation if empty on update
+                    
+                    $worker = \App\Models\Worker::where('id', $value)
+                        ->where('tenant_id', auth()->user()->tenant_id)
+                        ->first();
+                    
+                    if (!$worker) {
+                        $fail('The selected worker does not exist.');
+                    }
+                },
                 // Ensure worker is not already assigned to this job
                 Rule::unique('job_assignments', 'worker_id')
                     ->where('job_id', $this->input('job_id'))
@@ -49,7 +72,21 @@ class JobAssignmentRequest extends FormRequest
             'status' => [
                 'sometimes',
                 'string',
-                Rule::in(['pending', 'accepted', 'rejected', 'in_progress', 'completed', 'cancelled']),
+                Rule::in(['assigned', 'in_progress', 'completed', 'cancelled']),
+            ],
+            'role' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'notes' => [
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+            'data' => [
+                'nullable',
+                'array',
             ],
             'assigned_at' => [
                 'sometimes',
@@ -214,7 +251,9 @@ class JobAssignmentRequest extends FormRequest
         $validator->after(function ($validator) {
             // Check if job is available for assignment
             if ($this->filled('job_id')) {
-                $job = Job::find($this->input('job_id'));
+                $job = Job::where('id', $this->input('job_id'))
+                    ->where('tenant_id', auth()->user()->tenant_id)
+                    ->first();
                 
                 if ($job && $job->status !== 'open') {
                     $validator->errors()->add('job_id', 'This job is not available for assignment.');
@@ -223,7 +262,9 @@ class JobAssignmentRequest extends FormRequest
 
             // Check if worker is available
             if ($this->filled('worker_id')) {
-                $worker = Worker::find($this->input('worker_id'));
+                $worker = Worker::where('id', $this->input('worker_id'))
+                    ->where('tenant_id', auth()->user()->tenant_id)
+                    ->first();
                 
                 if ($worker && $worker->status !== 'active') {
                     $validator->errors()->add('worker_id', 'This worker is not available for assignment.');
