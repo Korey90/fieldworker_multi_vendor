@@ -22,6 +22,8 @@ class NotificationSeeder extends Seeder
                 Notification::create([
                     'id' => Str::uuid(),
                     'user_id' => $user->id,
+                    'tenant_id' => $user->tenant_id,
+                    'title' => $this->generateNotificationTitle($notificationType),
                     'type' => $notificationType,
                     'message' => $this->generateNotificationMessage($notificationType),
                     'is_read' => rand(0, 10) > 3, // 70% chance of being read
@@ -42,6 +44,30 @@ class NotificationSeeder extends Seeder
         ];
 
         return $types[rand(0, count($types) - 1)];
+    }
+
+    private function generateNotificationTitle($type): string
+    {
+        $titles = [
+            'job_assigned' => ['New Job Assignment', 'Work Order Assigned', 'Task Assignment'],
+            'job_completed' => ['Job Completed', 'Work Order Finished', 'Task Complete'],
+            'job_cancelled' => ['Job Cancelled', 'Work Order Cancelled', 'Task Cancelled'],
+            'job_updated' => ['Job Updated', 'Work Order Modified', 'Task Changed'],
+            'form_submitted' => ['Form Submitted', 'Report Filed', 'Document Submitted'],
+            'inspection_due' => ['Inspection Due', 'Inspection Required', 'Safety Check'],
+            'certification_expiring' => ['Certification Expiring', 'License Renewal', 'Certification Alert'],
+            'equipment_maintenance' => ['Equipment Maintenance', 'Service Required', 'Maintenance Alert'],
+            'schedule_updated' => ['Schedule Updated', 'Time Change', 'Calendar Update'],
+            'system_update' => ['System Update', 'Platform Update', 'System Notice'],
+            'safety_alert' => ['Safety Alert', 'Security Notice', 'Important Alert'],
+            'training_reminder' => ['Training Reminder', 'Course Due', 'Training Alert'],
+            'document_uploaded' => ['Document Upload', 'File Added', 'New Document'],
+            'message_received' => ['New Message', 'Message Alert', 'Communication'],
+            'approval_required' => ['Approval Required', 'Review Needed', 'Action Required']
+        ];
+
+        $typeMessages = $titles[$type] ?? ['Notification'];
+        return $typeMessages[rand(0, count($typeMessages) - 1)];
     }
 
     private function generateNotificationMessage($type): string

@@ -7,11 +7,33 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+Route::get('/test-auth', function () {
+    return [
+        'authenticated' => auth()->check(),
+        'user' => auth()->user(),
+        'session_id' => session()->getId(),
+    ];
 });
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
+Route::post('/test-csrf', function () {
+    return [
+        'message' => 'CSRF token prawidłowy!',
+        'timestamp' => now(),
+    ];
+});
+
+Route::get('/debug-session', function () {
+    return [
+        'authenticated' => auth()->check(),
+        'user' => auth()->user(),
+        'session_id' => session()->getId(),
+        'session_data' => session()->all(),
+    ];
+});
+
+
+
+require __DIR__.'/tenant.php';// tenant routes
+require __DIR__.'/admin.php';// admin routes
+require __DIR__.'/settings.php';// settings routes
+require __DIR__.'/auth.php';// auth routes

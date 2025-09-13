@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Form;
 use App\Models\Job;
-use App\Models\Worker;
+use App\Models\User;
 use App\Models\FormResponse;
 use App\Models\Signature;
 use Illuminate\Database\Seeder;
@@ -18,12 +18,12 @@ class FormResponseSeeder extends Seeder
         $completedJobs = Job::where('status', 'completed')->get();
         
         foreach ($completedJobs as $job) {
-            // Get workers assigned to this job
-            $assignedWorkers = Worker::whereHas('jobAssignments', function ($query) use ($job) {
+            // Get users assigned to this job through workers
+            $assignedUsers = User::whereHas('worker.jobAssignments', function ($query) use ($job) {
                 $query->where('job_id', $job->id);
             })->get();
 
-            if ($assignedWorkers->isEmpty()) continue;
+            if ($assignedUsers->isEmpty()) continue;
 
             // Get forms for this tenant
             $tenantForms = $forms->where('tenant_id', $job->tenant_id);
@@ -35,14 +35,17 @@ class FormResponseSeeder extends Seeder
             $selectedForms = $tenantForms->random($responseCount);
 
             foreach ($selectedForms as $form) {
-                $worker = $assignedWorkers->random();
+                $user = $assignedUsers->random();
                 
                 $formResponse = FormResponse::create([
                     'id' => Str::uuid(),
                     'form_id' => $form->id,
+                    'tenant_id' => $job->tenant_id,
+                    'user_id' => $user->id,
                     'job_id' => $job->id,
-                    'worker_id' => $worker->id,
-                    'answers' => $this->generateAnswers($form->schema)
+                    'response_data' => $this->generateAnswers($form->schema),
+                    'is_submitted' => true,
+                    'submitted_at' => now()->subDays(rand(1, 30)),
                 ]);
 
                 // Create signatures for this response

@@ -15,28 +15,40 @@ class TenantQuotaSeeder extends Seeder
         foreach ($tenants as $tenant) {
             $companySize = $tenant->data['company_size'] ?? 'small';
             
-            $quotas = match ($companySize) {
+            $quotaLimits = match ($companySize) {
                 'large' => [
-                    'max_users' => 500,
-                    'max_storage_mb' => 10240, // 10GB
-                    'max_jobs_per_month' => 5000
+                    'users' => 500,
+                    'storage_mb' => 10240, // 10GB
+                    'jobs_per_month' => 5000,
+                    'workers' => 200,
+                    'assets' => 1000,
                 ],
                 'medium' => [
-                    'max_users' => 100,
-                    'max_storage_mb' => 5120, // 5GB
-                    'max_jobs_per_month' => 1000
+                    'users' => 100,
+                    'storage_mb' => 5120, // 5GB
+                    'jobs_per_month' => 1000,
+                    'workers' => 50,
+                    'assets' => 300,
                 ],
                 default => [
-                    'max_users' => 25,
-                    'max_storage_mb' => 1024, // 1GB
-                    'max_jobs_per_month' => 200
+                    'users' => 25,
+                    'storage_mb' => 1024, // 1GB
+                    'jobs_per_month' => 200,
+                    'workers' => 20,
+                    'assets' => 100,
                 ]
             };
 
-            TenantQuota::create([
-                'tenant_id' => $tenant->id,
-                ...$quotas
-            ]);
+            foreach ($quotaLimits as $quotaType => $limit) {
+                TenantQuota::create([
+                    'tenant_id' => $tenant->id,
+                    'quota_type' => $quotaType,
+                    'quota_limit' => $limit,
+                    'current_usage' => 0,
+                    'status' => 'active',
+                    'reset_date' => in_array($quotaType, ['jobs_per_month']) ? now()->addMonth() : null,
+                ]);
+            }
         }
     }
 }

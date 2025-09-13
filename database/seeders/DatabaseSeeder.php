@@ -20,16 +20,16 @@ class DatabaseSeeder extends Seeder
             FeatureSeeder::class,
             PermissionSeeder::class,
             SkillSeeder::class,
-            CertificationSeeder::class,
             
-            // Tenant-related data
+            // Tenant-related data - FIRST because certifications need tenant_id
             TenantSeeder::class,
-            TenantQuotaSeeder::class,
+            CertificationSeeder::class, // Now after TenantSeeder
+            TenantQuotaSeeder::class, // Now enabled
             RoleSeeder::class,
             
             // User and worker data
             UserSeeder::class,
-            WorkerSeeder::class,
+            WorkerSeeder::class, // Skip for now - needs certifications
             
             // Location and asset data
             LocationSeeder::class,

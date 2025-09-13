@@ -23,13 +23,18 @@ class AttachmentSeeder extends Seeder
                 $attachmentCount = rand(1, 4);
                 
                 for ($i = 1; $i <= $attachmentCount; $i++) {
+                    $filename = 'document_' . Str::random(8) . '.pdf';
                     Attachment::create([
                         'id' => Str::uuid(),
                         'tenant_id' => $tenant->id,
-                        'entity_type' => 'job',
-                        'entity_id' => $job->id,
+                        'user_id' => User::where('tenant_id', $tenant->id)->inRandomOrder()->first()?->id,
+                        'attachable_type' => 'job',
+                        'attachable_id' => $job->id,
+                        'filename' => $filename,
+                        'original_filename' => $filename,
                         'file_path' => $this->generateFilePath('job'),
                         'file_type' => $this->getRandomFileType(),
+                        'mime_type' => 'application/pdf',
                         'file_size' => rand(100, 5000) * 1024 // Size in bytes
                     ]);
                 }
@@ -45,13 +50,18 @@ class AttachmentSeeder extends Seeder
                     $attachmentCount = rand(1, 3);
                     
                     for ($i = 1; $i <= $attachmentCount; $i++) {
+                        $filename = 'response_' . Str::random(8) . '.jpg';
                         Attachment::create([
                             'id' => Str::uuid(),
                             'tenant_id' => $tenant->id,
-                            'entity_type' => 'form_response',
-                            'entity_id' => $formResponse->id,
+                            'user_id' => User::where('tenant_id', $tenant->id)->inRandomOrder()->first()?->id,
+                            'attachable_type' => 'form_response',
+                            'attachable_id' => $formResponse->id,
+                            'filename' => $filename,
+                            'original_filename' => $filename,
                             'file_path' => $this->generateFilePath('form_response'),
                             'file_type' => $this->getRandomFileType(),
+                            'mime_type' => 'image/jpeg',
                             'file_size' => rand(50, 2000) * 1024
                         ]);
                     }

@@ -112,9 +112,30 @@ class Tenant extends Model
         return $this->hasMany(Attachment::class, 'tenant_id');
     }
 
+    public function quotas(): HasMany
+    {
+        return $this->hasMany(TenantQuota::class, 'tenant_id');
+    }
+
     public function quota(): HasOne
     {
-        return $this->hasOne(TenantQuota::class, 'tenant_id');
+        // Backward compatibility - returns a virtual quota object
+        return $this->hasOne(TenantQuota::class, 'tenant_id')->where('quota_type', 'users');
+    }
+
+    /**
+     * Get quota summary for backward compatibility
+     */
+    public function getQuotaSummaryAttribute()
+    {
+        $quotas = $this->quotas->keyBy('quota_type');
+        
+        return (object) [
+            'max_users' => $quotas->get('users')?->quota_limit ?? 0,
+            'current_users' => $quotas->get('users')?->current_usage ?? 0,
+            'max_storage_gb' => round(($quotas->get('storage')?->quota_limit ?? 0) / 1024, 2),
+            'current_storage_gb' => round(($quotas->get('storage')?->current_usage ?? 0) / 1024, 2),
+        ];
     }
 
     public function features(): BelongsToMany
@@ -125,5 +146,6 @@ class Tenant extends Model
     public function sectorModel(): BelongsTo
     {
         return $this->belongsTo(Sector::class, 'sector', 'code');
+        
     }
 }

@@ -20,7 +20,6 @@ class Job extends Model
         'title',
         'description',
         'location_id',
-        'assigned_user_id',
         'status',
         'scheduled_at',
         'completed_at',
@@ -41,6 +40,16 @@ class Job extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
     }
 
     public function assignments(): HasMany

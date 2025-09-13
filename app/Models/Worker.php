@@ -17,11 +17,14 @@ class Worker extends Model
     protected $fillable = [
         'tenant_id',
         'user_id',
+        'location_id',
         'employee_number',
         'hire_date',
         'hourly_rate',
         'status',
         'data',
+        'first_name',
+        'last_name',
     ];
 
     protected $casts = [
@@ -46,12 +49,18 @@ class Worker extends Model
 
     public function skills(): BelongsToMany
     {
-        return $this->belongsToMany(Skill::class, 'worker_skills');
+        return $this->belongsToMany(Skill::class, 'worker_skills')
+            ->withPivot(['level']);
     }
 
     public function jobAssignments(): HasMany
     {
         return $this->hasMany(JobAssignment::class);
+    }
+
+    public function currentJob(): BelongsTo
+    {
+        return $this->belongsTo(Job::class, 'current_job_id');
     }
 
     public function formResponses(): HasMany

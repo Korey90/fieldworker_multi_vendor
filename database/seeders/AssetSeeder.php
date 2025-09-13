@@ -24,7 +24,7 @@ class AssetSeeder extends Seeder
                     'id' => Str::uuid(),
                     'tenant_id' => $tenant->id,
                     'name' => $assetData['name'],
-                    'type' => $assetType,
+                    'asset_type' => $assetType,
                     'serial_number' => $this->generateSerialNumber(),
                     'data' => $assetData['data']
                 ]);
