@@ -35,7 +35,7 @@ class AdminRoleMiddleware
         }
 
         if (!$hasAccess) {
-            abort(403, 'Access denied. Admin or Manager role required.');
+            abort(403, 'Access denied. Admin or Manager role required. User roles: ' . implode(', ', $userRoles));
         }
 
         return $next($request);

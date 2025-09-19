@@ -44,7 +44,7 @@ class SectorController extends Controller
                 ];
             });
 
-        return Inertia::render('sectors/index', [
+        return Inertia::render('admin/sectors/index', [
             'sectors' => $sectors,
             'filters' => $request->only(['search', 'is_active', 'sort', 'direction']),
         ]);
@@ -55,7 +55,7 @@ class SectorController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('sectors/create');
+        return Inertia::render('admin/sectors/create');
     }
 
     /**
@@ -83,7 +83,7 @@ class SectorController extends Controller
     {
         $sector->load(['locations', 'tenants']);
 
-        return Inertia::render('sectors/show', [
+        return Inertia::render('admin/sectors/show', [
             'sector' => [
                 'id' => $sector->id,
                 'code' => $sector->code,
@@ -117,7 +117,7 @@ class SectorController extends Controller
      */
     public function edit(Sector $sector): Response
     {
-        return Inertia::render('sectors/edit', [
+        return Inertia::render('admin/sectors/edit', [
             'sector' => [
                 'id' => $sector->id,
                 'code' => $sector->code,

@@ -116,7 +116,7 @@ class WorkerController extends Controller
                 ];
             });
 
-        return Inertia::render('workers/index', [
+        return Inertia::render('admin/workers/index', [
             'workers' => $workers,
             'filters' => $request->only(['search', 'tenant', 'status', 'location', 'skills']),
             // Add additional data for filters - Admin sees all locations, tenants
@@ -153,7 +153,7 @@ class WorkerController extends Controller
             ->orderBy('name')
             ->get();
 
-        return Inertia::render('workers/create', [
+        return Inertia::render('admin/workers/create', [
             'skills' => $skills,
             'tenants' => $tenants,
         ]);
@@ -245,7 +245,7 @@ class WorkerController extends Controller
             'jobAssignments.job.location:id,name'
         ]);
 
-        return Inertia::render('workers/show', [
+        return Inertia::render('admin/workers/show', [
             'worker' => [
                 'id' => $worker->id,
                 'user' => [
@@ -303,7 +303,7 @@ class WorkerController extends Controller
             ->orderBy('name')
             ->get();
         
-        return Inertia::render('workers/edit', [
+        return Inertia::render('admin/workers/edit', [
             'worker' => $worker->load(['user', 'skills', 'tenant']),
             'skills' => $skills,
             'tenants' => $tenants,

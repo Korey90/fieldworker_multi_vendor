@@ -80,6 +80,8 @@ export default function FormPreview({
             case 'text':
             case 'email':
             case 'number':
+            case 'date':
+            case 'datetime-local':
                 return (
                     <div key={field.name} className="space-y-2">
                         <Label htmlFor={fieldId}>

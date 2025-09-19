@@ -35,7 +35,7 @@ class JobController extends Controller
 
         $jobs = $query->paginate(15)->withQueryString();
 
-        return Inertia::render('jobs/index', [
+        return Inertia::render('admin/jobs/index', [
             'jobs' => $jobs,
             'locations' => Location::all(['id', 'name']),
             'filters' => $request->only(['search', 'status', 'location_id']),
@@ -53,7 +53,7 @@ class JobController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('jobs/create', [
+        return Inertia::render('admin/jobs/create', [
             'locations' => Location::all(['id', 'name', 'address']),
             'users' => User::whereHas('roles', function ($query) {
                 $query->whereIn('name', ['worker', 'manager']);
@@ -126,7 +126,7 @@ class JobController extends Controller
             'formResponses.form'
         ]);
 
-        return Inertia::render('jobs/show', [
+        return Inertia::render('admin/jobs/show', [
             'job' => $job,
             'availableWorkers' => User::whereHas('roles', function ($query) {
                 $query->where('name', 'worker');
@@ -141,7 +141,7 @@ class JobController extends Controller
     {
         $job->load(['location', 'assignments.user']);
 
-        return Inertia::render('jobs/edit', [
+        return Inertia::render('admin/jobs/edit', [
             'job' => $job,
             'locations' => Location::all(['id', 'name', 'address']),
             'users' => User::whereHas('roles', function ($query) {
@@ -192,7 +192,7 @@ class JobController extends Controller
             ->get()
             ->groupBy('status');
 
-        return Inertia::render('jobs/kanban', [
+        return Inertia::render('admin/jobs/kanban', [
             'jobsByStatus' => $jobs,
             'statuses' => [
                 'pending' => 'Oczekuje',
@@ -215,7 +215,7 @@ class JobController extends Controller
             ->whereBetween('scheduled_at', [$startDate, $endDate])
             ->get();
 
-        return Inertia::render('jobs/calendar', [
+        return Inertia::render('admin/jobs/calendar', [
             'jobs' => $jobs,
             'startDate' => $startDate,
             'endDate' => $endDate,

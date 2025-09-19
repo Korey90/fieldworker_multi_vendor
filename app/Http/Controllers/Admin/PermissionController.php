@@ -31,7 +31,7 @@ class PermissionController extends Controller
                            ->filter()
                            ->values();
 
-        return Inertia::render('permissions/index', [
+        return Inertia::render('admin/permissions/index', [
             'permissions' => $permissions,
             'groups' => $groups,
             'filters' => $request->only(['search', 'group', 'status'])
@@ -42,7 +42,7 @@ class PermissionController extends Controller
     {
         $permission->load(['roles.users']);
 
-        return Inertia::render('permissions/show', [
+        return Inertia::render('admin/permissions/show', [
             'permission' => $permission,
         ]);
     }
@@ -54,7 +54,7 @@ class PermissionController extends Controller
                                    ->filter()
                                    ->values();
 
-        return Inertia::render('permissions/create', [
+        return Inertia::render('admin/permissions/create', [
             'existingGroups' => $existingGroups
         ]);
     }
@@ -92,7 +92,7 @@ class PermissionController extends Controller
                                    ->filter()
                                    ->values();
 
-        return Inertia::render('permissions/edit', [
+        return Inertia::render('admin/permissions/edit', [
             'permission' => $permission,
             'existingGroups' => $existingGroups
         ]);

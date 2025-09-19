@@ -18,17 +18,20 @@ use App\Http\Controllers\Admin\CertificationController;
 use App\Http\Controllers\Admin\NotificationController;
 
 use Illuminate\Support\Facades\Route;
+//inertia
+use Inertia\Inertia;
 
 
-Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
+Route::middleware(['auth', 'admin'])
     ->prefix('admin')
+    ->name('admin.')
     ->group(function () {
 
     // Admin/Manager Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Admin/Manager Workers Management
-    Route::prefix('workers')->name('admin.workers.')->group(function () {
+    Route::prefix('workers')->name('workers.')->group(function () {
         Route::get('/', [WorkerController::class, 'index'])
             ->name('index');
         Route::get('/create', [WorkerController::class, 'create'])
@@ -46,7 +49,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Jobs Management
-    Route::prefix('jobs')->name('admin.jobs.')->group(function () {
+    Route::prefix('jobs')->name('jobs.')->group(function () {
         Route::get('/', [JobController::class, 'index'])
             ->name('index');
         Route::get('/create', [JobController::class, 'create'])
@@ -74,7 +77,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Tenants Management
-    Route::prefix('tenants')->name('admin.tenants.')->group(function () {
+    Route::prefix('tenants')->name('tenants.')->group(function () {
         Route::get('/', [TenantController::class, 'index'])
             ->name('index');
         Route::get('/create', [TenantController::class, 'create'])
@@ -98,7 +101,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Users Management
-    Route::prefix('users')->name('admin.users.')->group(function () {
+    Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [UserController::class, 'index'])
             ->name('index');
         Route::get('/create', [UserController::class, 'create'])
@@ -124,7 +127,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Roles Management
-    Route::prefix('roles')->name('admin.roles.')->group(function () {
+    Route::prefix('roles')->name('roles.')->group(function () {
         Route::get('/', [RoleController::class, 'index'])
             ->name('index');
         Route::get('/create', [RoleController::class, 'create'])
@@ -148,7 +151,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Permissions Management
-    Route::prefix('permissions')->name('admin.permissions.')->group(function () {
+    Route::prefix('permissions')->name('permissions.')->group(function () {
         Route::get('/', [PermissionController::class, 'index'])
             ->name('index');
         Route::get('/create', [PermissionController::class, 'create'])
@@ -168,7 +171,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Quota Management
-    Route::prefix('quotas')->name('admin.quotas.')->group(function () {
+    Route::prefix('quotas')->name('quotas.')->group(function () {
         Route::get('/', [QuotaController::class, 'index'])
             ->name('index');
         Route::get('/tenant/{tenant}', [QuotaController::class, 'show'])
@@ -190,7 +193,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Assets Management
-    Route::prefix('assets')->name('admin.assets.')->group(function () {
+    Route::prefix('assets')->name('assets.')->group(function () {
         Route::get('/', [AssetController::class, 'index'])
             ->name('index');
         Route::get('/create', [AssetController::class, 'create'])
@@ -216,7 +219,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Sectors Management
-    Route::prefix('sectors')->name('admin.sectors.')->group(function () {
+    Route::prefix('sectors')->name('sectors.')->group(function () {
         Route::get('/', [SectorController::class, 'index'])
             ->name('index');
         Route::get('/create', [SectorController::class, 'create'])
@@ -234,7 +237,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Forms Management
-    Route::prefix('forms')->name('admin.forms.')->group(function () {
+    Route::prefix('forms')->name('forms.')->group(function () {
         Route::get('/', [FormController::class, 'index'])
             ->name('index');
         Route::get('/create', [FormController::class, 'create'])
@@ -248,7 +251,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
                 $form = \App\Models\Form::with('tenant')->find($formId);
             }
             
-            return Inertia::render('forms/builder', [
+            return Inertia::render('admin/forms/builder', [
                 'form' => $form,
                 'tenants' => $tenants
             ]);
@@ -270,7 +273,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Form Responses Management
-    Route::prefix('form-responses')->name('admin.form-responses.')->group(function () {
+    Route::prefix('form-responses')->name('form-responses.')->group(function () {
         Route::get('/', [FormResponseController::class, 'index'])
             ->name('index');
         Route::get('/create', [FormResponseController::class, 'create'])
@@ -290,7 +293,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Locations Management
-    Route::prefix('locations')->name('admin.locations.')->group(function () {
+    Route::prefix('locations')->name('locations.')->group(function () {
         Route::get('/', [LocationController::class, 'index'])
             ->name('index');
         Route::get('/create', [LocationController::class, 'create'])
@@ -316,7 +319,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Skills Management
-    Route::prefix('skills')->name('admin.skills.')->group(function () {
+    Route::prefix('skills')->name('skills.')->group(function () {
         Route::get('/', [SkillController::class, 'index'])
             ->name('index');
         Route::get('/create', [SkillController::class, 'create'])
@@ -334,7 +337,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Certifications Management
-    Route::prefix('certifications')->name('admin.certifications.')->group(function () {
+    Route::prefix('certifications')->name('certifications.')->group(function () {
         Route::get('/', [CertificationController::class, 'index'])
             ->name('index');
         Route::get('/create', [CertificationController::class, 'create'])
@@ -352,7 +355,7 @@ Route::middleware(['auth', App\Http\Middleware\AdminRoleMiddleware::class])
     });
 
     // Admin/Manager Notifications Management
-    Route::prefix('notifications')->name('admin.notifications.')->group(function () {
+    Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])
             ->name('index');
         Route::get('/create', [NotificationController::class, 'create'])

@@ -19,28 +19,41 @@ class TenantMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Get tenant from authenticated user
-        $user = Auth::guard('sanctum')->user();
+        // Get tenant from authenticated user - try web guard first, then sanctum
+        $user = Auth::user() ?? Auth::guard('sanctum')->user();
         
         if (!$user || !$user->tenant_id) {
-            return response()->json([
-                'message' => 'No tenant associated with user'
-            ], 403);
+            // For web requests, redirect to login
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'No tenant associated with user'
+                ], 403);
+            }
+            
+            return redirect()->route('login')->with('error', 'Please log in to access tenant area.');
         }
 
         $tenant = Tenant::find($user->tenant_id);
         
         if (!$tenant) {
-            return response()->json([
-                'message' => 'Invalid tenant'
-            ], 403);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Invalid tenant'
+                ], 403);
+            }
+            
+            return redirect()->route('login')->with('error', 'Invalid tenant configuration.');
         }
 
         // Check if tenant is active
         if ($tenant->status !== 'active') {
-            return response()->json([
-                'message' => 'Tenant account is not active'
-            ], 403);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Tenant account is not active'
+                ], 403);
+            }
+            
+            return redirect()->route('login')->with('error', 'Tenant account is not active.');
         }
 
         // Set tenant context globally

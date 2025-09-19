@@ -24,6 +24,12 @@ class Form extends Model
         'schema' => 'array',
     ];
 
+    public function getSchemaAttribute($value)
+    {
+        $decoded = $this->castAttribute('schema', $value);
+        return is_array($decoded) ? $decoded : [];
+    }
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);

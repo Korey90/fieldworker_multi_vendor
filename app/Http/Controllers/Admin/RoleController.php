@@ -25,7 +25,7 @@ class RoleController extends Controller
 
         $roles = $query->get();
 
-        return Inertia::render('roles/index', [
+        return Inertia::render('admin/roles/index', [
             'roles' => $roles,
             'filters' => $request->only(['search'])
         ]);
@@ -40,7 +40,7 @@ class RoleController extends Controller
                                         ->get()
                                         ->groupBy('permission_group');
 
-        return Inertia::render('roles/show', [
+        return Inertia::render('admin/roles/show', [
             'role' => $role,
             'availablePermissions' => $availablePermissions,
         ]);
@@ -52,7 +52,7 @@ class RoleController extends Controller
                                 ->get()
                                 ->groupBy('permission_group');
 
-        return Inertia::render('roles/create', [
+        return Inertia::render('admin/roles/create', [
             'permissions' => $permissions
         ]);
     }
@@ -90,7 +90,7 @@ class RoleController extends Controller
                                 ->get()
                                 ->groupBy('permission_group');
 
-        return Inertia::render('roles/edit', [
+        return Inertia::render('admin/roles/edit', [
             'role' => $role,
             'permissions' => $permissions
         ]);

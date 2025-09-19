@@ -31,7 +31,7 @@ class WorkerPolicy
         }
         
         // Managers can view workers in their tenant
-        if (in_array('manager', $userRoles) && $user->tenant_id === $worker->tenant_id) {
+        if (in_array('tenant', $userRoles) && $user->tenant_id === $worker->tenant_id) {
             return true;
         }
 

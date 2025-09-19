@@ -89,6 +89,11 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class);
     }
 
+    public function formResponses(): HasMany
+    {
+        return $this->hasMany(FormResponse::class);
+    }
+
     /**
      * Get all permissions for this user (both direct and through roles)
      */

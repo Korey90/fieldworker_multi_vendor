@@ -33,6 +33,22 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+
+        $userRoles = Auth::user()->roles->pluck('slug')->toArray();
+
+       // dd($userRoles);
+
+        switch (true) {
+            case in_array('admin', $userRoles):
+                return redirect()->intended(route('admin.dashboard', absolute: false));
+            case in_array('manager', $userRoles):
+                return redirect()->intended(route('tenant.dashboard', absolute: false));
+            case in_array('tenant', $userRoles):
+                return redirect()->intended(route('tenant.dashboard', absolute: false));
+            default:
+                return redirect()->intended(route('/', absolute: false));
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

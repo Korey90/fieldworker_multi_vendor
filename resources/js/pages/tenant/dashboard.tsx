@@ -1,12 +1,13 @@
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { RecentActivity } from '@/components/dashboard/recent-activity';
 import { QuickActions } from '@/components/dashboard/quick-actions';
+import QuotaWidget from '@/components/quota-widget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-import { Bell, Users, Briefcase, Activity, AlertTriangle, Eye, CheckCircle } from 'lucide-react';
+import { Bell, Users, Briefcase, Activity, AlertTriangle, Eye, CheckCircle, Link } from 'lucide-react';
 
 interface TenantDashboardProps {
     stats: {
@@ -53,6 +54,16 @@ interface TenantDashboardProps {
         name: string;
         slug: string;
     };
+    quotas?: Array<{
+        id: string;
+        quota_type: string;
+        quota_limit: number;
+        current_usage: number;
+        usage_percentage: number;
+        status: 'active' | 'warning' | 'exceeded' | 'inactive';
+        is_unlimited: boolean;
+        is_exceeded: boolean;
+    }>;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -62,7 +73,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function TenantDashboard({ stats, recentNotifications, quickActions, tenant }: TenantDashboardProps) {
+export default function TenantDashboard({ stats, recentNotifications, quickActions, tenant, quotas = [] }: TenantDashboardProps) {
     // Convert notifications to activity format for reusability
     const recentActivity = recentNotifications.map(notification => ({
         id: notification.id.toString(),
@@ -109,6 +120,7 @@ export default function TenantDashboard({ stats, recentNotifications, quickActio
                         Monitor and manage operations for {tenant.name}
                     </p>
                 </div>
+
 
                 {/* Stats Cards */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -174,6 +186,13 @@ export default function TenantDashboard({ stats, recentNotifications, quickActio
                             activities={recentActivity}
                         />
                     </div>
+
+                    <a href={route('testowy.show', { id: '01f77be3-e31d-47b7-b18c-f817d888aa5e' })}>
+                        View User Data
+                    </a>
+                        <a href={route('testowy.profile', { id: '01f77be3-e31d-47b7-b18c-f817d888aa5e' })}>
+                        View User Profile
+                    </a>
 
                     {/* Quick Actions - spans 1 column */}
                     <div className="lg:col-span-1">
@@ -258,6 +277,16 @@ export default function TenantDashboard({ stats, recentNotifications, quickActio
                                 </div>
                             </div>
                         </div>
+
+                        {/* Quota Widget */}
+                        {quotas && quotas.length > 0 && (
+                            <QuotaWidget 
+                                quotas={quotas} 
+                                tenantId={tenant.id.toString()}
+                                showActions={false} 
+                                maxVisible={5} 
+                            />
+                        )}
                     </div>
                 </div>
             </div>

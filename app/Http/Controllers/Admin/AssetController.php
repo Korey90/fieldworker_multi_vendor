@@ -52,7 +52,7 @@ class AssetController extends Controller
 
         $statuses = ['active', 'inactive', 'maintenance', 'retired'];
 
-        return Inertia::render('assets/index', [
+        return Inertia::render('admin/assets/index', [
             'assets' => $assets,
             'locations' => $locations,
             'assetTypes' => $assetTypes,
@@ -65,7 +65,7 @@ class AssetController extends Controller
     {
         $asset->load(['tenant', 'location', 'currentAssignment', 'auditLogs']);
         
-        return Inertia::render('assets/show', [
+        return Inertia::render('admin/assets/show', [
             'asset' => $asset,
         ]);
     }
@@ -83,7 +83,7 @@ class AssetController extends Controller
                         ->with('user')
                         ->get();
 
-        return Inertia::render('assets/create', [
+        return Inertia::render('admin/assets/create', [
             'locations' => $locations,
             'workers' => $workers,
         ]);
@@ -139,7 +139,7 @@ class AssetController extends Controller
                         ->with('user')
                         ->get();
 
-        return Inertia::render('assets/edit', [
+        return Inertia::render('admin/assets/edit', [
             'asset' => $asset,
             'locations' => $locations,
             'workers' => $workers,

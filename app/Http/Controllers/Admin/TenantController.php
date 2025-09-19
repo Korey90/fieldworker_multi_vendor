@@ -71,7 +71,7 @@ class TenantController extends Controller
             ];
         });
 
-        return Inertia::render('tenants/index', [
+        return Inertia::render('admin/tenants/index', [
             'tenants' => $tenants->items(),
             'pagination' => [
                 'current_page' => $tenants->currentPage(),
@@ -89,7 +89,7 @@ class TenantController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('tenants/create', [
+        return Inertia::render('admin/tenants/create', [
             'sectors' => Sector::select('code', 'name')->get(),
             'features' => Feature::where('is_active', true)->select('id', 'name', 'description')->get(),
         ]);
@@ -201,7 +201,7 @@ class TenantController extends Controller
             ->limit(5)
             ->get(['id', 'title', 'status', 'location_id', 'created_at']);
 
-        return Inertia::render('tenants/show', [
+        return Inertia::render('admin/tenants/show', [
             'tenant' => [
                 'id' => $tenant->id,
                 'name' => $tenant->name,
@@ -239,7 +239,7 @@ class TenantController extends Controller
         $data = $tenant->data ?? [];
         $description = $data['description'] ?? null;
 
-        return Inertia::render('tenants/edit', [
+        return Inertia::render('admin/tenants/edit', [
             'tenant' => [
                 'id' => $tenant->id,
                 'name' => $tenant->name,
@@ -404,7 +404,7 @@ class TenantController extends Controller
     {
         $tenant->load(['quotas']);
 
-        return Inertia::render('tenants/quotas', [
+        return Inertia::render('admin/tenants/quotas', [
             'tenant' => [
                 'id' => $tenant->id,
                 'name' => $tenant->name,

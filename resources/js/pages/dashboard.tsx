@@ -7,8 +7,8 @@ import { AssetUtilizationChart } from '@/components/dashboard/asset-utilization-
 import { LocationMap } from '@/components/dashboard/location-map';
 import { AlertsPanel } from '@/components/dashboard/alerts-panel';
 import { SystemStatus } from '@/components/dashboard/system-status';
+import QuotaWidget from '@/components/quota-widget';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Users, Briefcase, Settings, Activity, AlertTriangle } from 'lucide-react';
@@ -29,6 +29,17 @@ interface DashboardProps {
         user?: string;
         priority?: 'low' | 'medium' | 'high' | 'critical';
     }>;
+    quotaSummary?: Array<{
+        id: string;
+        quota_type: string;
+        quota_limit: number;
+        current_usage: number;
+        usage_percentage: number;
+        status: 'active' | 'warning' | 'exceeded' | 'inactive';
+        is_unlimited: boolean;
+        is_exceeded: boolean;
+        tenant_name?: string;
+    }>;
     user: {
         name: string;
         email: string;
@@ -39,11 +50,11 @@ interface DashboardProps {
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Dashboard',
-        href: dashboard().url,
+        href: route('admin.dashboard'),
     },
 ];
 
-export default function Dashboard({ stats, recentActivity, user }: DashboardProps) {
+export default function Dashboard({ stats, recentActivity, user, quotaSummary = [] }: DashboardProps) {
     // Convert timestamp strings to Date objects for the activities
     const activitiesWithDates = recentActivity.map(activity => ({
         ...activity,
@@ -116,6 +127,14 @@ export default function Dashboard({ stats, recentActivity, user }: DashboardProp
                     
                     {/* Right Column - Sidebar */}
                     <div className="lg:col-span-1 space-y-6">
+                        {/* Quota Widget - show if there are quotas with issues */}
+                        {quotaSummary && quotaSummary.length > 0 && (
+                            <QuotaWidget 
+                                quotas={quotaSummary} 
+                                showActions={true} 
+                                maxVisible={4} 
+                            />
+                        )}
                         <QuickActions />
                         <AlertsPanel />
                         <SystemStatus />

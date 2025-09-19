@@ -29,13 +29,13 @@ class UserController extends Controller
                 $query->where('is_active', $request->status);
             });
 
-        $users = $query->paginate(15);
-        
+        $users = $query->paginate(50);
+                
         $roles = Role::where('tenant_id', auth()->user()->tenant_id)
                     ->orWhere('tenant_id', null)
                     ->get();
 
-        return Inertia::render('users/index', [
+        return Inertia::render('admin/users/index', [
             'users' => $users,
             'roles' => $roles,
             'filters' => $request->only(['search', 'role', 'status'])
@@ -52,7 +52,7 @@ class UserController extends Controller
 
         $allPermissions = $user->getAllPermissions();
 
-        return Inertia::render('users/show', [
+        return Inertia::render('admin/users/show', [
             'user' => $user,
             'availableRoles' => $availableRoles,
             'allPermissions' => $allPermissions,
@@ -65,7 +65,7 @@ class UserController extends Controller
                     ->orWhere('tenant_id', null)
                     ->get();
 
-        return Inertia::render('users/create', [
+        return Inertia::render('admin/users/create', [
             'roles' => $roles
         ]);
     }
@@ -109,7 +109,7 @@ class UserController extends Controller
                     ->orWhere('tenant_id', null)
                     ->get();
 
-        return Inertia::render('users/edit', [
+        return Inertia::render('admin/users/edit', [
             'user' => $user,
             'roles' => $roles
         ]);

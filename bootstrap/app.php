@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AdminRoleMiddleware;
 use App\Http\Middleware\CheckPermissionsMiddleware;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Aliasy middleware
         $middleware->alias([
+            'admin' => AdminRoleMiddleware::class,
             'tenant' => TenantMiddleware::class,
             'tenant.admin' => TenantAdminMiddleware::class,
             'permission' => CheckPermissionsMiddleware::class,

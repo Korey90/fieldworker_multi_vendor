@@ -65,7 +65,7 @@ class Worker extends Model
 
     public function formResponses(): HasMany
     {
-        return $this->hasMany(FormResponse::class);
+        return $this->hasMany(FormResponse::class, 'user_id', 'user_id');
     }
 
     public function certifications(): BelongsToMany

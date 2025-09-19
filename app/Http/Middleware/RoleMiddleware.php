@@ -17,12 +17,17 @@ class RoleMiddleware
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        $user = Auth::guard('sanctum')->user();
+        // Try web guard first, then sanctum
+        $user = Auth::user() ?? Auth::guard('sanctum')->user();
 
         if (!$user) {
-            return response()->json([
-                'message' => 'Unauthenticated'
-            ], 401);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Unauthenticated'
+                ], 401);
+            }
+            
+            return redirect()->route('login');
         }
 
         // Check if user has any of the required roles
@@ -37,11 +42,15 @@ class RoleMiddleware
         }
 
         if (!$hasRole) {
-            return response()->json([
-                'message' => 'Insufficient role privileges',
-                'required_roles' => $roles,
-                'user_roles' => $userRoles
-            ], 403);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Insufficient role privileges',
+                    'required_roles' => $roles,
+                    'user_roles' => $userRoles
+                ], 403);
+            }
+            
+            return redirect()->route('login')->with('error', 'Insufficient permissions.');
         }
 
         return $next($request);

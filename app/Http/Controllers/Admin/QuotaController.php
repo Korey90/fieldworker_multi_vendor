@@ -67,7 +67,7 @@ class QuotaController extends Controller
             ];
         });
 
-        return Inertia::render('quotas/index', [
+        return Inertia::render('admin/quotas/index', [
             'quotas' => $quotas->items(),
             'pagination' => [
                 'current_page' => $quotas->currentPage(),
@@ -124,7 +124,7 @@ class QuotaController extends Controller
             ];
         });
 
-        return Inertia::render('quotas/tenant', [
+        return Inertia::render('admin/quotas/tenant', [
             'tenant' => [
                 'id' => $tenant->id,
                 'name' => $tenant->name,
@@ -393,7 +393,7 @@ class QuotaController extends Controller
             }
         }
 
-        return Inertia::render('quotas/recommendations', [
+        return Inertia::render('admin/quotas/recommendations', [
             'tenant' => [
                 'id' => $tenant->id,
                 'name' => $tenant->name,
@@ -469,7 +469,7 @@ class QuotaController extends Controller
 
         //dd($tenants->items());
 
-        return Inertia::render('quotas/tenant', [
+        return Inertia::render('admin/quotas/tenant', [
             'tenants' => $tenants->items(),
             'pagination' => [
                 'current_page' => $tenants->currentPage(),

@@ -62,7 +62,7 @@ class NotificationController extends Controller
             ->orderBy('name')
             ->get();
 
-        return Inertia::render('notifications/index', [
+        return Inertia::render('admin/notifications/index', [
             'notificationData' => $notifications,
             'filters' => [
                 'type' => $request->filled('type') ? $request->type : null,
@@ -104,7 +104,7 @@ class NotificationController extends Controller
             'maintenance' => 'Maintenance',
         ];
 
-        return Inertia::render('notifications/create', [
+        return Inertia::render('admin/notifications/create', [
             'users' => $users,
             'types' => $types,
         ]);
@@ -153,7 +153,7 @@ class NotificationController extends Controller
 
         $notification->load(['user:id,name,email']);
 
-        return Inertia::render('notifications/show', [
+        return Inertia::render('admin/notifications/show', [
             'notification' => $notification,
         ]);
     }
@@ -186,7 +186,7 @@ class NotificationController extends Controller
             'maintenance' => 'Maintenance',
         ];
 
-        return Inertia::render('notifications/edit', [
+        return Inertia::render('admin/notifications/edit', [
             'notification' => $notification,
             'users' => $users,
             'types' => $types,

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,14 @@ interface FormBuilderProps {
     initialSchema?: FormSchema;
     onSave?: (schema: FormSchema) => void;
     onPreview?: (schema: FormSchema) => void;
+    onChange?: (schema: FormSchema) => void;
+    // Form metadata props
+    formName?: string;
+    formType?: string;
+    tenantId?: string;
+    onFormNameChange?: (name: string) => void;
+    onFormTypeChange?: (type: string) => void;
+    onTenantChange?: (tenantId: string) => void;
 }
 
 interface BuilderField extends FormField {
@@ -34,7 +42,18 @@ interface BuilderSection extends Omit<FormSection, 'fields'> {
     fields: BuilderField[];
 }
 
-export default function FormBuilder({ initialSchema, onSave, onPreview }: FormBuilderProps) {
+export default function FormBuilder({ 
+    initialSchema, 
+    onSave, 
+    onPreview, 
+    onChange,
+    formName = '',
+    formType = '',
+    tenantId = '',
+    onFormNameChange,
+    onFormTypeChange,
+    onTenantChange
+}: FormBuilderProps) {
     const [sections, setSections] = useState<BuilderSection[]>(() => {
         if (initialSchema?.sections) {
             return initialSchema.sections.map((section, index) => ({
@@ -52,6 +71,26 @@ export default function FormBuilder({ initialSchema, onSave, onPreview }: FormBu
             fields: []
         }];
     });
+
+    // Notify parent about changes with a simple debounced effect
+    useEffect(() => {
+        if (onChange) {
+            const timeoutId = setTimeout(() => {
+                const schema: FormSchema = {
+                    sections: sections.map(section => ({
+                        title: section.title,
+                        fields: section.fields.map(field => {
+                            const { id, ...fieldWithoutId } = field;
+                            return fieldWithoutId;
+                        })
+                    }))
+                };
+                onChange(schema);
+            }, 100); // 100ms debounce
+
+            return () => clearTimeout(timeoutId);
+        }
+    }, [sections, onChange]);
 
     const [selectedItem, setSelectedItem] = useState<{ type: 'section' | 'field'; id: string } | null>(null);
     const [draggedField, setDraggedField] = useState<string | null>(null);
@@ -339,6 +378,54 @@ export default function FormBuilder({ initialSchema, onSave, onPreview }: FormBu
                             </Button>
                         </div>
                     </div>
+
+                    
+                    <Card className="mb-6">
+                        <CardHeader>
+                            <CardTitle>Form Metadata</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+
+                            {/* Form metadata inputs */}
+                            <div className="flex items-center space-x-4">
+                                <div>
+                                    <Label htmlFor="form-name">Form Name</Label>
+                                    <Input
+                                        id="form-name"
+                                        type="text"
+                                        value={formName}
+                                        onChange={(e) => onFormNameChange?.(e.target.value)}
+                                        placeholder="Enter form name"
+                                        className="w-48"
+                                    />
+                                </div>
+        
+                                <div>
+                                    <Label htmlFor="form-type">Form Type</Label>
+                                    <Input
+                                        id="form-type"
+                                        type="text"
+                                        value={formType}
+                                        onChange={(e) => onFormTypeChange?.(e.target.value)}
+                                        placeholder="e.g., inspection, survey"
+                                        className="w-48"
+                                    />
+                                </div>
+                     
+                                <div>
+                                    <Label htmlFor="tenant-id">Tenant</Label>
+                                    <Input
+                                        id="tenant-id"
+                                        value={tenantId}
+                                        className="w-48"
+                                        readOnly
+                                    />
+                                </div>
+                            </div>
+                        </CardContent>
+
+                    </Card>
+
 
                     {/* Sections */}
                     <div className="space-y-6">

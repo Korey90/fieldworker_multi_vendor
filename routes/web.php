@@ -7,6 +7,12 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
+Route::get('/user-profile/{id}', [\App\Http\Controllers\Tenant\TestowyController::class, 'showUserProfile'])->name('testowy.profile');
+
+Route::get('/testowy/{id}', [\App\Http\Controllers\Tenant\TestowyController::class, 'getAllUserData'])->name('testowy.show');
+
+
+
 Route::get('/test-auth', function () {
     return [
         'authenticated' => auth()->check(),
@@ -31,9 +37,7 @@ Route::get('/debug-session', function () {
     ];
 });
 
-
-
+require __DIR__.'/settings.php';// settings routes
 require __DIR__.'/tenant.php';// tenant routes
 require __DIR__.'/admin.php';// admin routes
-require __DIR__.'/settings.php';// settings routes
 require __DIR__.'/auth.php';// auth routes
