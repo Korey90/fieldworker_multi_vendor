@@ -14,17 +14,24 @@ return new class extends Migration
         Schema::create('attachments', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id');
-            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
-
-            $table->string('entity_type'); // e.g. job, form_response
-            $table->uuid('entity_id');
-
+            $table->uuid('user_id')->nullable();
+            $table->string('attachable_type')->nullable(); // e.g. job, form_response
+            $table->uuid('attachable_id')->nullable();
+            $table->string('filename');
+            $table->string('original_filename');
             $table->string('file_path');
             $table->string('file_type')->nullable();
+            $table->string('mime_type')->nullable();
             $table->bigInteger('file_size')->nullable();
+            $table->json('data')->nullable();
+            
+            
+            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
 
             $table->timestamps();
         });
+
     }
 
     /**

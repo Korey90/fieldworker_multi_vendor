@@ -13,17 +13,21 @@ return new class extends Migration
     {
         Schema::create('form_responses', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->uuid('tenant_id');
+            $table->uuid('user_id')->nullable();
+            $table->uuid('job_id')->nullable();
             $table->uuid('form_id');
-            $table->foreign('form_id')->references('id')->on('forms')->onDelete('cascade');
-
-            $table->uuid('tenant_job_id')->nullable();
-            $table->foreign('tenant_job_id')->references('id')->on('tenant_jobs')->onDelete('set null');
-
-            $table->uuid('worker_id')->nullable();
-            $table->foreign('worker_id')->references('id')->on('workers')->onDelete('set null');
-
-            $table->json('answers');
+            
+            $table->json('response_data');
+            $table->boolean('is_submitted')->default(false);
+            $table->timestamp('submitted_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
+            
+            $table->foreign('job_id')->references('id')->on('tenant_jobs')->onDelete('set null');
+            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('form_id')->references('id')->on('forms')->onDelete('cascade');
         });
     }
 

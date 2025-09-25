@@ -14,17 +14,22 @@ return new class extends Migration
         Schema::create('workers', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id');
-            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
-
-            $table->uuid('user_id')->nullable();
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
-
+            $table->uuid('location_id')->nullable();
             $table->string('employee_number')->nullable();
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->date('dob')->nullable();
+            $table->string('insurance_number')->nullable(); // wrażliwe → szyfrow
+            $table->datetime('hire_date')->nullable();
+            $table->decimal('hourly_rate', 8, 2)->nullable();
             $table->string('status')->default('active');
             $table->json('data')->nullable();
-
+            
             $table->timestamps();
             $table->softDeletes();
+            
+            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
+            $table->foreign('location_id')->references('id')->on('locations')->onDelete('set null');
         });
     }
 

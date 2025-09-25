@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('roles', function (Blueprint $table) {
-            $table->string('slug')->after('name');
-            $table->unique(['tenant_id', 'slug'], 'roles_tenant_slug_unique');
+        Schema::create('sectors', function (Blueprint $table) {
+            $table->id();
+            $table->string('code')->unique();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
         });
     }
 
@@ -22,9 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('roles', function (Blueprint $table) {
-            $table->dropUnique('roles_tenant_slug_unique');
-            $table->dropColumn('slug');
-        });
+        Schema::dropIfExists('sectors');
     }
 };

@@ -13,11 +13,9 @@ return new class extends Migration
     {
         Schema::create('roles', function (Blueprint $table) {
             $table->id();
-            $table->uuid('tenant_id');
-            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
             $table->string('name');
-            $table->text('description')->nullable();
-            $table->unique(['tenant_id', 'name']);
+            $table->string('slug');
+            $table->text('description')->nullable();          
         });
     }
 

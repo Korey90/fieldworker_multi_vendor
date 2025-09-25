@@ -11,17 +11,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('job_assignments', function (Blueprint $table) {
-            $table->uuid('tenant_job_id');
-            $table->foreign('tenant_job_id')->references('id')->on('tenant_jobs')->onDelete('cascade');
-
+        Schema::create('job_assignments', function (Blueprint $table) {            
+            $table->uuid('id')->primary();            
+            $table->uuid('job_id');
             $table->uuid('worker_id');
-            $table->foreign('worker_id')->references('id')->on('workers')->onDelete('cascade');
-
             $table->string('role')->nullable();
             $table->string('status')->default('assigned');
+            // Add missing fields
+            $table->timestamp('assigned_at')->default(now());
+            $table->timestamp('completed_at')->nullable();
+            $table->text('notes')->nullable();
+            $table->json('data')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+            
+            // add foreign keys
+            $table->foreign('job_id')->references('id')->on('tenant_jobs')->onDelete('cascade');
+            $table->foreign('worker_id')->references('id')->on('workers')->onDelete('cascade');
+            
+            // Add unique constraint for job_id + worker_id
+            $table->unique(['job_id', 'worker_id']);
 
-            $table->primary(['tenant_job_id', 'worker_id']);
         });
     }
 

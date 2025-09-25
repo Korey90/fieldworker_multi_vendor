@@ -22,7 +22,7 @@ class NotificationSeeder extends Seeder
                 Notification::create([
                     'id' => Str::uuid(),
                     'user_id' => $user->id,
-                    'tenant_id' => $user->tenant_id,
+                    'tenant_id' => $user->tenant_id ?? null,
                     'title' => $this->generateNotificationTitle($notificationType),
                     'type' => $notificationType,
                     'message' => $this->generateNotificationMessage($notificationType),

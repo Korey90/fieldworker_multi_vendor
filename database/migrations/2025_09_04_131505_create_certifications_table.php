@@ -13,9 +13,15 @@ return new class extends Migration
     {
         Schema::create('certifications', function (Blueprint $table) {
             $table->id();
+            $table->uuid('tenant_id');
             $table->string('name');
             $table->string('authority')->nullable();
             $table->integer('validity_period_months')->nullable();
+            $table->text('description')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+            
+            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
         });
     }
 

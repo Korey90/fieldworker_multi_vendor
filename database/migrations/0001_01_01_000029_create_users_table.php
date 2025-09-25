@@ -13,23 +13,24 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('tenant_id');
-            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
-
+            $table->uuid('tenant_id')->nullable();
+            $table->string('name')->nullable();
             $table->string('email')->unique();
             $table->string('password');
-            $table->string('name')->nullable();
             $table->string('phone')->nullable();
             $table->boolean('is_active')->default(true);
             $table->json('data')->nullable();
             $table->rememberToken();
+            
+            $table->timestamp('email_verified_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
-            $table->timestamp('email_verified_at')->nullable();
-
+            
             $table->unique(['tenant_id', 'email']);
-        });
 
+            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
+        });
+        
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');

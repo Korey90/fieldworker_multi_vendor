@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Form;
 use App\Models\Job;
 use App\Models\User;
+use App\Models\Worker;
 use App\Models\FormResponse;
 use App\Models\Signature;
 use Illuminate\Database\Seeder;
@@ -19,23 +20,34 @@ class FormResponseSeeder extends Seeder
         
         foreach ($completedJobs as $job) {
             // Get users assigned to this job through workers
-            $assignedUsers = User::whereHas('worker.jobAssignments', function ($query) use ($job) {
+            $assignedUsers = Worker::whereHas('jobAssignments', function ($query) use ($job) {
                 $query->where('job_id', $job->id);
             })->get();
 
+            $assignedUsers = $assignedUsers->filter(fn($w) => $w->user_id && User::find($w->user_id));
             if ($assignedUsers->isEmpty()) continue;
+
+            // Wybierz losowego usera   
+//            $user = $assignedUsers->random();
+
 
             // Get forms for this tenant
             $tenantForms = $forms->where('tenant_id', $job->tenant_id);
             
             if ($tenantForms->isEmpty()) continue;
 
+            $this->command->info("Creating form responses for Job ID: {$job->id} with " . count($assignedUsers) . " assigned users and " . count($tenantForms) . " forms.");
+
             // Create 1-3 form responses per completed job
             $responseCount = rand(1, min(3, $tenantForms->count()));
             $selectedForms = $tenantForms->random($responseCount);
 
+            $this->command->info("Creating form responses for Job ID: {$job->id} with " . count($assignedUsers) . " assigned users and " . count($selectedForms) . " selected forms.");
+
             foreach ($selectedForms as $form) {
                 $user = $assignedUsers->random();
+
+                $this->command->info("Creating form response for User ID: {$user->id} and Form ID: {$form->id}");
                 
                 $formResponse = FormResponse::create([
                     'id' => Str::uuid(),

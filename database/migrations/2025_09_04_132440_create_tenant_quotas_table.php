@@ -12,13 +12,25 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tenant_quotas', function (Blueprint $table) {
-            $table->uuid('tenant_id')->primary();
+            $table->uuid('id')->primary();
+            $table->uuid('tenant_id');
             $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
-
-            $table->integer('max_users')->nullable();
-            $table->integer('max_storage_mb')->nullable();
-            $table->integer('max_jobs_per_month')->nullable();
-
+            
+            // Elastyczna struktura kwot
+            $table->string('quota_type', 100); // users, workers, jobs, assets, storage, api_calls, forms, etc.
+            $table->bigInteger('quota_limit')->default(0); // -1 = unlimited, 0+ = limit
+            $table->bigInteger('current_usage')->default(0);
+            
+            // Status i metadata
+            $table->enum('status', ['active', 'inactive', 'exceeded', 'warning'])->default('active');
+            $table->timestamp('reset_date')->nullable(); // dla cyklicznych kwot jak monthly jobs
+            $table->json('metadata')->nullable(); // dodatkowe informacje specyficzne dla typu kwoty
+            
+            // Indeksy
+            $table->unique(['tenant_id', 'quota_type']); // jeden typ kwoty na tenant
+            $table->index(['tenant_id', 'status']);
+            $table->index(['quota_type']);
+            
             $table->timestamps();
         });
     }

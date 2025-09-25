@@ -14,12 +14,17 @@ return new class extends Migration
         Schema::create('notifications', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('user_id');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-
+            $table->uuid('tenant_id')->nullable();
+            $table->string('title');
             $table->string('type');
             $table->text('message');
             $table->boolean('is_read')->default(false);
+            $table->json('data')->nullable();    
+            $table->timestamp('read_at')->nullable();
             $table->timestamps();
+            
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
         });
     }
 
