@@ -17,6 +17,11 @@ class AssetController extends Controller
      */
     public function index(Request $request): Response
     {
+        // Check if user can view assets
+        if (Auth::user()->cannot('viewAny', Asset::class)) {
+            abort(403, 'Unauthorized to view assets.');
+        }
+
         $assets = Asset::with(['location', 'currentAssignment.user'])
             ->where('tenant_id', auth()->user()->tenant_id)
             ->when($request->search, function ($query, $search) {
@@ -71,6 +76,11 @@ class AssetController extends Controller
      */
     public function create(): Response
     {
+        // Check if user can create assets
+        if (Auth::user()->cannot('create', Asset::class)) {
+            abort(403, 'Unauthorized to create assets.');
+        }
+
         $locations = Location::where('tenant_id', auth()->user()->tenant_id)
             ->select('id', 'name')
             ->get();
@@ -90,6 +100,11 @@ class AssetController extends Controller
      */
     public function store(Request $request)
     {
+        // Check if user can create assets
+        if (Auth::user()->cannot('create', Asset::class)) {
+            abort(403, 'Unauthorized to create assets.');
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -150,6 +165,11 @@ class AssetController extends Controller
      */
     public function show(Asset $asset): Response
     {
+        // Check if user can view assets
+        if (Auth::user()->cannot('view', $asset)) {
+            abort(403, 'Unauthorized to view this asset.');
+        }
+
         // Ensure asset belongs to current tenant
         if ($asset->tenant_id !== auth()->user()->tenant_id) {
             abort(403, 'Unauthorized access to this asset');
@@ -167,6 +187,11 @@ class AssetController extends Controller
      */
     public function edit(Asset $asset): Response
     {
+        // Check if user can update assets
+        if (Auth::user()->cannot('update', $asset)) {
+            abort(403, 'Unauthorized to edit this asset.');
+        }
+
         // Ensure asset belongs to current tenant
         if ($asset->tenant_id !== auth()->user()->tenant_id) {
             abort(403, 'Unauthorized access to this asset');
@@ -192,6 +217,11 @@ class AssetController extends Controller
      */
     public function update(Request $request, Asset $asset)
     {
+        // Check if user can update assets
+        if (Auth::user()->cannot('update', $asset)) {
+            abort(403, 'Unauthorized to update this asset.');
+        }
+
         // Ensure asset belongs to current tenant
         if ($asset->tenant_id !== auth()->user()->tenant_id) {
             abort(403, 'Unauthorized access to this asset');
@@ -256,6 +286,11 @@ class AssetController extends Controller
      */
     public function destroy(Asset $asset)
     {
+        // Check if user can delete assets
+        if (Auth::user()->cannot('delete', $asset)) {
+            abort(403, 'Unauthorized to delete this asset.');
+        }
+
         // Ensure asset belongs to current tenant
         if ($asset->tenant_id !== auth()->user()->tenant_id) {
             abort(403, 'Unauthorized access to this asset');
@@ -272,6 +307,11 @@ class AssetController extends Controller
      */
     public function export(Request $request)
     {
+        // Check if user can export assets
+        if (Auth::user()->cannot('viewAny', Asset::class)) {
+            abort(403, 'Unauthorized to export assets.');
+        }
+
         $assets = Asset::with(['location', 'currentAssignment.user'])
             ->where('tenant_id', auth()->user()->tenant_id)
             ->when($request->search, function ($query, $search) {

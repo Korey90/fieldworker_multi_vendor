@@ -22,34 +22,11 @@ class NotificationController extends Controller
 
     public function __construct()
     {
-        // Apply middleware to ensure only tenant admins and global admins can access
-        $this->middleware(['auth', 'role:tenant.admin']);
-        
-        // Initialize tenant in middleware context
+        // Apply middleware to ensure only authenticated users with tenant access
+        $this->middleware(['auth', 'tenant']);
+
         $this->middleware(function ($request, $next) {
-            $user = Auth::user();
-            
-            // Global admins can access any tenant (for support purposes)
-            // Tenant admins can only access their own tenant
-            if ($user->hasRole('admin')) {
-                // For global admin, tenant can be specified via route parameter or current user's tenant
-                $this->tenantId = $request->route('tenant_id') ?? $user->tenant_id;
-            } else {
-                // For tenant admin, always use their own tenant
-                $this->tenantId = $user->tenant_id;
-            }
-            
-            // Validate tenant exists and user has access
-            $this->tenant = Tenant::find($this->tenantId);
-            if (!$this->tenant) {
-                abort(404, 'Tenant not found');
-            }
-            
-            // Ensure tenant admin can only access their own tenant
-            if (!$user->hasRole('admin') && $user->tenant_id !== $this->tenantId) {
-                abort(403, 'Access denied to this tenant');
-            }
-            
+            $this->tenantId = Auth::user()->tenant_id;
             return $next($request);
         });
     }

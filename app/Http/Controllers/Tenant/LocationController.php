@@ -29,6 +29,11 @@ class LocationController extends Controller
      */
     public function index(Request $request): Response
     {
+        // Check if user can view locations
+        if (Auth::user()->cannot('viewAny', Location::class)) {
+            abort(403, 'Unauthorized to view locations.');
+        }
+
         $perPage = $request->get('per_page', 10);
         $search = $request->get('search');
         $type = $request->get('type');
@@ -111,6 +116,11 @@ class LocationController extends Controller
      */
     public function create(): Response
     {
+        // Check if user can create locations
+        if (Auth::user()->cannot('create', Location::class)) {
+            abort(403, 'Unauthorized to create locations.');
+        }
+
         $user = Auth::user();
         
         $sectors = Sector::orderBy('name')->get(['id', 'name']);
@@ -138,6 +148,11 @@ class LocationController extends Controller
      */
     public function store(Request $request)
     {
+        // Check if user can create locations
+        if (Auth::user()->cannot('create', Location::class)) {
+            abort(403, 'Unauthorized to create locations.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'required|string|max:500',
@@ -167,6 +182,11 @@ class LocationController extends Controller
      */
     public function show(Location $location): Response
     {
+        // Check if user can view locations
+        if (Auth::user()->cannot('view', $location)) {
+            abort(403, 'Unauthorized to view this location.');
+        }
+
         $location->load([
             'sector',
             'tenant',
@@ -200,6 +220,11 @@ class LocationController extends Controller
      */
     public function edit(Location $location): Response
     {
+        // Check if user can update locations
+        if (Auth::user()->cannot('update', $location)) {
+            abort(403, 'Unauthorized to edit this location.');
+        }
+
         $sectors = Sector::orderBy('name')->get(['id', 'name']);
         
         // Get common location types for suggestions
@@ -226,6 +251,11 @@ class LocationController extends Controller
      */
     public function update(Request $request, Location $location)
     {
+        // Check if user can update locations
+        if (Auth::user()->cannot('update', $location)) {
+            abort(403, 'Unauthorized to update this location.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'required|string|max:500',
@@ -253,6 +283,11 @@ class LocationController extends Controller
      */
     public function destroy(Location $location)
     {
+        // Check if user can delete locations
+        if (Auth::user()->cannot('delete', $location)) {
+            abort(403, 'Unauthorized to delete this location.');
+        }
+
         // Check if location has any active relationships
         $workersCount = $location->workers()->count();
         $activeJobsCount = $location->jobs()->whereIn('status', ['pending', 'in_progress'])->count();

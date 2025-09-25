@@ -79,7 +79,7 @@ interface Worker {
     hire_date: string;
     hourly_rate?: number;
     created_at: string;
-    user: User;
+    user: User | ['null'];
     location?: Location;
     skills: Skill[];
     job_assignments: JobAssignment[];
@@ -270,13 +270,13 @@ const WorkersShow: React.FC<Props> = ({ worker, can }) => {
 
                                         <div className="flex items-center gap-2">
                                             <Mail className="h-4 w-4 text-gray-500" />
-                                            <span>{worker.user.email}</span>
+                                            <span>{worker?.user?.email || 'Brak adresu email'}</span>
                                         </div>
 
-                                        {worker.user.phone && (
+                                        {worker?.user?.phone && (
                                             <div className="flex items-center gap-2">
                                                 <Phone className="h-4 w-4 text-gray-500" />
-                                                <span>{worker.user.phone}</span>
+                                                <span>{worker.user.phone || 'Brak numeru telefonu'}</span>
                                             </div>
                                         )}
 
@@ -337,7 +337,7 @@ const WorkersShow: React.FC<Props> = ({ worker, can }) => {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        {worker.user.roles.length > 0 ? (
+                                        {worker?.user?.roles.length > 0 ? (
                                             <div className="flex flex-wrap gap-2">
                                                 {worker.user.roles.map((role) => (
                                                     <Badge key={role.id} variant="outline">

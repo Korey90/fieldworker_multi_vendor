@@ -84,22 +84,28 @@ interface FormData {
 }
 
 const WorkersEdit: React.FC<Props> = ({ worker, locations, skills, roles }) => {
+
+    console.log('worker', worker);
+    console.log('skills', skills);
+    console.log('locations', locations);
+
+
     const [selectedSkills, setSelectedSkills] = useState<Array<{id: string, level: string}>>([]);
     const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
     const { data, setData, put, processing, errors, reset } = useForm<FormData>({
-        email: worker.user.email,
-        name: worker.user.name,
-        phone: worker.user.phone || '',
+        email: worker?.user?.email || '',
+        name: worker?.user?.name || '',
+        phone: worker?.user?.phone || '',
         password: '',
         password_confirmation: '',
-        first_name: worker.first_name,
-        last_name: worker.last_name,
-        employee_number: worker.employee_number || '',
-        location_id: worker.location?.id || '',
-        hire_date: worker.hire_date.split('T')[0], // Format date for input
-        hourly_rate: worker.hourly_rate?.toString() || '',
-        status: worker.status,
+        first_name: worker?.first_name || '',
+        last_name: worker?.last_name || '',
+        employee_number: worker?.employee_number || '',
+        location_id: worker?.location?.id || '',
+        hire_date: worker?.hire_date.split('T')[0], // Format date for input
+        hourly_rate: worker?.hourly_rate?.toString() || '',
+        status: worker?.status,
         role_ids: [],
         skill_ids: [],
         skill_levels: [],
@@ -109,12 +115,13 @@ const WorkersEdit: React.FC<Props> = ({ worker, locations, skills, roles }) => {
     useEffect(() => {
         const workerSkills = worker.skills.map(skill => ({
             id: skill.id,
-            level: skill.pivot?.level || 'beginner'
+            level: skill?.pivot?.level || 'beginner'
         }));
         setSelectedSkills(workerSkills);
 
-        const workerRoles = worker.user.roles.map(role => role.id);
+        const workerRoles = worker?.user?.roles.map(role => role.id);
         setSelectedRoles(workerRoles);
+        console.log('selectedRoles', workerRoles);
     }, [worker]);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -346,7 +353,7 @@ const WorkersEdit: React.FC<Props> = ({ worker, locations, skills, roles }) => {
                                                 <SelectValue placeholder="Wybierz lokalizację" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="">Brak lokalizacji</SelectItem>
+                                                <SelectItem value="0">Brak lokalizacji</SelectItem>
                                                 {locations.map((location) => (
                                                     <SelectItem key={location.id} value={location.id}>
                                                         {location.name}
@@ -361,9 +368,9 @@ const WorkersEdit: React.FC<Props> = ({ worker, locations, skills, roles }) => {
                                         <Label htmlFor="hire_date">Data zatrudnienia</Label>
                                         <Input
                                             id="hire_date"
-                                            type="date"
+                                            type="text"
                                             value={data.hire_date}
-                                            onChange={(e) => setData('hire_date', e.target.value)}
+                                            readOnly
                                         />
                                         <InputError message={errors.hire_date} />
                                     </div>
@@ -382,38 +389,6 @@ const WorkersEdit: React.FC<Props> = ({ worker, locations, skills, roles }) => {
                                         <InputError message={errors.hourly_rate} />
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Roles */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Shield className="h-5 w-5" />
-                                    Role w systemie
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {roles.map((role) => (
-                                        <div key={role.id} className="flex items-start space-x-3">
-                                            <Checkbox
-                                                id={`role-${role.id}`}
-                                                checked={selectedRoles.includes(role.id)}
-                                                onCheckedChange={(checked) => handleRoleToggle(role.id, checked as boolean)}
-                                            />
-                                            <div className="flex-1">
-                                                <Label htmlFor={`role-${role.id}`} className="font-medium">
-                                                    {role.name}
-                                                </Label>
-                                                {role.description && (
-                                                    <p className="text-sm text-gray-500 mt-1">{role.description}</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <InputError message={errors.role_ids} />
                             </CardContent>
                         </Card>
 

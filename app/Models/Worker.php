@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Support\Facades\Crypt;
 
 class Worker extends Model
 {
@@ -19,12 +21,14 @@ class Worker extends Model
         'user_id',
         'location_id',
         'employee_number',
+        'first_name',
+        'last_name',
+        'dob',
+        'insurance_number', // wrażliwe → szyfrowane
         'hire_date',
         'hourly_rate',
         'status',
-        'data',
-        'first_name',
-        'last_name',
+        'data', // dodatkowe info w JSON
     ];
 
     protected $casts = [
@@ -32,14 +36,21 @@ class Worker extends Model
         'hire_date' => 'datetime',
     ];
 
+    /**
+     * Accessor/Mutator dla insurance_number (szyfrowanie w bazie)
+     */
+    protected function insuranceNumber(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $value ? Crypt::decryptString($value) : null,
+            set: fn ($value) => $value ? Crypt::encryptString($value) : null,
+        );
+    }
+
+    // 🔹 Relacje
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
-    }
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
     }
 
     public function location(): BelongsTo
@@ -49,7 +60,7 @@ class Worker extends Model
 
     public function skills(): BelongsToMany
     {
-        return $this->belongsToMany(Skill::class, 'worker_skills')
+        return $this->belongsToMany(Skill::class, 'worker_skills', 'worker_id', 'skill_id')
             ->withPivot(['level']);
     }
 

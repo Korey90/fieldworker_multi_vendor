@@ -17,6 +17,11 @@ class FormResponseController extends Controller
      */
     public function index(Request $request, Form $form): Response
     {
+        // Check if user can view form responses
+        if (Auth::user()->cannot('viewAny', FormResponse::class)) {
+            abort(403, 'Unauthorized to view form responses.');
+        }
+
         // Ensure the form belongs to the current tenant
         if ($form->tenant_id !== auth()->user()->tenant_id) {
             abort(403, 'Unauthorized access to this form');
@@ -54,6 +59,11 @@ class FormResponseController extends Controller
      */
     public function create(Form $form): Response
     {
+        // Check if user can create form responses
+        if (Auth::user()->cannot('create', FormResponse::class)) {
+            abort(403, 'Unauthorized to create form responses.');
+        }
+
         // Ensure the form belongs to the current tenant
         if ($form->tenant_id !== auth()->user()->tenant_id) {
             abort(403, 'Unauthorized access to this form');
@@ -69,6 +79,11 @@ class FormResponseController extends Controller
      */
     public function store(Request $request, Form $form)
     {
+        // Check if user can create form responses
+        if (Auth::user()->cannot('create', FormResponse::class)) {
+            abort(403, 'Unauthorized to create form responses.');
+        }
+
         // Ensure the form belongs to the current tenant
         if ($form->tenant_id !== auth()->user()->tenant_id) {
             abort(403, 'Unauthorized access to this form');
@@ -104,6 +119,11 @@ class FormResponseController extends Controller
      */
     public function show(Form $form, FormResponse $response): Response
     {
+        // Check if user can view form responses
+        if (Auth::user()->cannot('view', $response)) {
+            abort(403, 'Unauthorized to view this form response.');
+        }
+
         // Ensure both form and response belong to the current tenant
         if ($form->tenant_id !== auth()->user()->tenant_id || 
             $response->tenant_id !== auth()->user()->tenant_id) {
@@ -123,6 +143,11 @@ class FormResponseController extends Controller
      */
     public function edit(Form $form, FormResponse $response): Response
     {
+        // Check if user can update form responses
+        if (Auth::user()->cannot('update', $response)) {
+            abort(403, 'Unauthorized to edit this form response.');
+        }
+
         // Ensure both form and response belong to the current tenant
         if ($form->tenant_id !== auth()->user()->tenant_id || 
             $response->tenant_id !== auth()->user()->tenant_id) {
@@ -146,6 +171,11 @@ class FormResponseController extends Controller
      */
     public function update(Request $request, Form $form, FormResponse $response)
     {
+        // Check if user can update form responses
+        if (Auth::user()->cannot('update', $response)) {
+            abort(403, 'Unauthorized to update this form response.');
+        }
+
         // Ensure both form and response belong to the current tenant
         if ($form->tenant_id !== auth()->user()->tenant_id || 
             $response->tenant_id !== auth()->user()->tenant_id) {
@@ -183,6 +213,11 @@ class FormResponseController extends Controller
      */
     public function destroy(Form $form, FormResponse $response)
     {
+        // Check if user can delete form responses
+        if (Auth::user()->cannot('delete', $response)) {
+            abort(403, 'Unauthorized to delete this form response.');
+        }
+
         // Ensure both form and response belong to the current tenant
         if ($form->tenant_id !== auth()->user()->tenant_id || 
             $response->tenant_id !== auth()->user()->tenant_id) {
@@ -200,6 +235,11 @@ class FormResponseController extends Controller
      */
     public function export(Request $request, Form $form)
     {
+        // Check if user can export form responses
+        if (Auth::user()->cannot('export', FormResponse::class)) {
+            abort(403, 'Unauthorized to export form responses.');
+        }
+
         // Ensure the form belongs to the current tenant
         if ($form->tenant_id !== auth()->user()->tenant_id) {
             abort(403, 'Unauthorized access to this form');

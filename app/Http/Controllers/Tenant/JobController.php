@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Illuminate\Http\RedirectResponse;
 
 class JobController extends Controller
 {
@@ -21,6 +22,8 @@ class JobController extends Controller
         // Apply middleware to ensure only authenticated users with tenant access
         $this->middleware(['auth', 'tenant']);
 
+        // The tenant middleware is already applied in routes/tenant.php
+        // Just set up the tenant ID accessor
         $this->middleware(function ($request, $next) {
             $this->tenantId = Auth::user()->tenant_id;
             return $next($request);
@@ -32,8 +35,10 @@ class JobController extends Controller
     public function index()
     {
         // Check if user can view jobs
-        $this->authorize('viewAny', Job::class);
-        
+        if (Auth::user()->cannot('viewAny', Job::class)) {
+            abort(403, 'Unauthorized to view jobs.');
+        }
+
         // Get jobs for current tenant only
         $jobs = Job::where('tenant_id', $this->tenantId)
             ->with(['location', 'location.sector', 'assignments.worker.user'])
@@ -53,8 +58,9 @@ class JobController extends Controller
      */
     public function create()
     {
-        // Check if user can create jobs
-        $this->authorize('create', Job::class);
+        if (Auth::user()->cannot('create', Job::class)) {
+            abort(403, 'Unauthorized to create jobs.');
+        }
 
         // Get available resources for the tenant
         $locations = Location::where('tenant_id', $this->tenantId)
@@ -72,8 +78,12 @@ class JobController extends Controller
      */
     public function store(Request $request)
     {
+        if (Auth::user()->cannot('create', Job::class)) {
+            abort(403, 'Unauthorized to create jobs.');
+        }
+
         // Check if user can create jobs
-        $this->authorize('create', Job::class);
+        //$this->authorize('create', Job::class);
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -93,14 +103,12 @@ class JobController extends Controller
                 ->where('tenant_id', $this->tenantId)
                 ->firstOrFail();
         }
-        
-        $location = Location::where('id', $validated['location_id'])
-            ->where('tenant_id', $this->tenantId)
-            ->firstOrFail();
-            
-        $sector = Sector::where('id', $validated['sector_id'])
-            ->where('tenant_id', $this->tenantId)
-            ->firstOrFail();
+
+        if (isset($validated['sector_id'])) {
+            $sector = Sector::where('id', $validated['sector_id'])
+                ->where('tenant_id', $this->tenantId)
+                ->firstOrFail();
+        }
 
         $job = Job::create([
             ...$validated,
@@ -118,8 +126,9 @@ class JobController extends Controller
      */
     public function show(Job $job)
     {
-        // Check if user can view this specific job
-        $this->authorize('view', $job);
+        if (Auth::user()->cannot('view', $job)) {
+            abort(403, 'Unauthorized to view job.');
+        }
 
         // Ensure job belongs to tenant (extra security)
         if ($job->tenant_id !== $this->tenantId) {
@@ -150,8 +159,10 @@ class JobController extends Controller
      */
     public function edit(Job $job)
     {
-        // Check if user can edit this job
-        $this->authorize('update', $job);
+        if (Auth::user()->cannot('update', $job)) {
+            abort(403, 'Unauthorized to update jobs.');
+        }
+
 
         // Ensure job belongs to tenant
         if ($job->tenant_id !== $this->tenantId) {
@@ -162,24 +173,35 @@ class JobController extends Controller
             ->select('id', 'name', 'address')
             ->get();
             
-        $sectors = Sector::where('tenant_id', $this->tenantId)
-            ->select('id', 'name', 'description')
+            
+        $sectors = Sector::select('id', 'name', 'description')
             ->get();
 
-        return Inertia::render('Tenant/Jobs/Edit', [
+        // Load relationships
+        $job->load(['location', 'location.sector']);
+
+        $skills = \App\Models\Skill::whereHas('workers', function ($q) {
+            $q->where('tenant_id', $this->tenantId);
+        })
+        ->pluck('name', 'id'); // albo 'id' jeśli chcesz ID
+
+        return Inertia::render('tenant/jobs/edit', [
             'job' => $job,
             'locations' => $locations,
             'sectors' => $sectors,
+            'skills' => $skills,
         ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Job $job)
+    public function update(Request $request, Job $job) :RedirectResponse
     {
         // Check if user can update this job
-        $this->authorize('update', $job);
+        if ($request->user()->cannot('update', $job)) {
+            abort(403, 'Unauthorized to update jobs.');
+        }
 
         // Ensure job belongs to tenant
         if ($job->tenant_id !== $this->tenantId) {
@@ -190,7 +212,7 @@ class JobController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'location_id' => 'required|exists:locations,id',
-            'sector_id' => 'required|exists:sectors,id',
+            'sector_id' => 'nullable|exists:sectors,id',
             'priority' => 'required|in:low,medium,high,urgent',
             'scheduled_start' => 'required|date',
             'estimated_hours' => 'required|numeric|min:0.5|max:24',
@@ -224,8 +246,10 @@ class JobController extends Controller
      */
     public function destroy(Job $job)
     {
-        // Check if user can delete this job
-        $this->authorize('delete', $job);
+        // Check if user can delete Jobs
+        if (Auth::user()->cannot('delete', Job::class)) {
+            abort(403, 'Unauthorized to delete jobs.');
+        }
 
         // Ensure job belongs to tenant
         if ($job->tenant_id !== $this->tenantId) {
@@ -244,7 +268,10 @@ class JobController extends Controller
     public function assignWorkers(Request $request, Job $job)
     {
         // Check if user can assign workers to this job
-        $this->authorize('assignWorkers', $job);
+        if (Auth::user()->cannot('assignWorkers', Job::class)) {
+            abort(403, 'Unauthorized to assign workers to jobs.');
+        }
+
 
         // Ensure job belongs to tenant
         if ($job->tenant_id !== $this->tenantId) {
@@ -285,7 +312,10 @@ class JobController extends Controller
     public function updateStatus(Request $request, Job $job)
     {
         // Check if user can update status of this job
-        $this->authorize('updateStatus', $job);
+        if (Auth::user()->cannot('updateStatus', Job::class)) {
+            abort(403, 'Unauthorized to update job status.');
+        }
+        
 
         // Ensure job belongs to tenant
         if ($job->tenant_id !== $this->tenantId) {

@@ -36,7 +36,9 @@ class WorkerController extends Controller
     public function index(Request $request)
     {
         // Check if user can view workers
-        $this->authorize('viewAny', Worker::class);
+        if (Auth::user()->cannot('viewAny', Worker::class)) {
+            abort(403, 'Unauthorized to view workers.');
+        }
         
         $query = Worker::where('tenant_id', $this->tenantId)
             ->with(['user', 'location', 'skills', 'jobAssignments.job'])
@@ -93,7 +95,9 @@ class WorkerController extends Controller
     public function create()
     {
         // Check if user can create workers
-        $this->authorize('create', Worker::class);
+        if (Auth::user()->cannot('create', Worker::class)) {
+            abort(403, 'Unauthorized to create workers.');
+        }
 
         // Get available resources for the tenant
         $locations = Location::where('tenant_id', $this->tenantId)
@@ -120,7 +124,9 @@ class WorkerController extends Controller
     public function store(Request $request)
     {
         // Check if user can create workers
-        $this->authorize('create', Worker::class);
+        if (Auth::user()->cannot('create', Worker::class)) {
+            abort(403, 'Unauthorized to create workers.');
+        }
 
         $validated = $request->validate([
             'email' => 'required|email|unique:users,email',
@@ -198,8 +204,12 @@ class WorkerController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Worker $worker)
     {
+        // Check if user can view this worker
+        if (Auth::user()->cannot('view', $worker)) {
+            abort(403, 'Unauthorized to view this worker.');
+        }
         $worker = Worker::where('tenant_id', $this->tenantId)
             ->with([
                 'user.roles',
@@ -214,10 +224,7 @@ class WorkerController extends Controller
                     $query->orderBy('created_at', 'desc')->limit(5);
                 }
             ])
-            ->findOrFail($id);
-
-        // Check if user can view this worker
-        $this->authorize('view', $worker);
+            ->findOrFail($worker->id);
 
         return Inertia::render('tenant/workers/show', [
             'worker' => $worker,
@@ -231,14 +238,18 @@ class WorkerController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Worker $worker)
     {
+        if (Auth::user()->cannot('update', $worker)) {
+            abort(403, 'Unauthorized to edit this worker.');
+        }
+
         $worker = Worker::where('tenant_id', $this->tenantId)
-            ->with(['user.roles', 'skills'])
-            ->findOrFail($id);
+            ->with('skills')
+            ->findOrFail($worker->id);
 
         // Check if user can update this worker
-        $this->authorize('update', $worker);
+
 
         // Get available resources for the tenant
         $locations = Location::where('tenant_id', $this->tenantId)
@@ -265,14 +276,18 @@ class WorkerController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, string $id, Worker $worker)
     {
+        if (Auth::user()->cannot('update', $worker)) {
+            abort(403, 'Unauthorized to update this worker.');
+        }
+
         $worker = Worker::where('tenant_id', $this->tenantId)
-            ->with('user')
+            ->with('tenant')
             ->findOrFail($id);
 
         // Check if user can update this worker
-        $this->authorize('update', $worker);
+
 
         $validated = $request->validate([
             'email' => 'required|email|unique:users,email,' . $worker->user_id,
@@ -352,14 +367,18 @@ class WorkerController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(string $id, Worker $worker)
     {
+        if (Auth::user()->cannot('delete', $worker)) {
+            abort(403, 'Unauthorized to delete this worker.');
+        }
+
         $worker = Worker::where('tenant_id', $this->tenantId)
             ->with('user')
             ->findOrFail($id);
 
         // Check if user can delete this worker
-        $this->authorize('delete', $worker);
+
 
         try {
             DB::beginTransaction();

@@ -83,8 +83,8 @@ class JobPolicy
         }
         
         // Managers can update jobs in their tenant
-        if (in_array('manager', $userRoles) && $user->tenant_id === $job->tenant_id) {
-            return true;
+        if (in_array('manager', $userRoles)) {
+            return $user->tenant_id === $job->tenant_id;
         }
 
         // Supervisors can update jobs in their tenant

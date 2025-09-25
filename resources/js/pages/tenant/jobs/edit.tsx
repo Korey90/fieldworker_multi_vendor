@@ -46,25 +46,36 @@ interface FormData {
     description: string;
     location_id: string;
     sector_id: string;
-    priority: 'low' | 'medium' | 'high' | 'urgent' | '';
+    data: {
+        priority: 'low' | 'medium' | 'high' | 'urgent' | '';
+        [key: string]: any;
+    };
     scheduled_start: string;
     estimated_hours: string;
     required_skills: string[];
     safety_requirements: string;
 }
 
-const EditJob: React.FC<Props> = ({ job, locations, sectors }) => {
-    const { data, setData, patch, processing, errors } = useForm<FormData>({
+const EditJob: React.FC<Props> = ({ job, locations, sectors, skills }) => {
+
+    console.log('Editing job:', job);
+    console.log('Available locations:', locations);
+    console.log('Available sectors:', sectors);
+    console.log('Available skills:', skills);
+    const { data, setData, put, processing, errors } = useForm<FormData>({
         title: job.title || '',
         description: job.description || '',
         location_id: job.location_id || '',
         sector_id: job.sector_id || '',
+        data: job?.data || [],
         priority: job.priority || '',
         scheduled_start: job.scheduled_start ? job.scheduled_start.slice(0, 16) : '',
         estimated_hours: job.estimated_hours?.toString() || '',
-        required_skills: job.required_skills || [],
+        required_skills: job.data.required_skills || ['abc', 'def'],
         safety_requirements: job.safety_requirements || '',
     });
+
+    console.log('Form data:', data);
 
     const [newSkill, setNewSkill] = React.useState('');
 
@@ -81,7 +92,7 @@ const EditJob: React.FC<Props> = ({ job, locations, sectors }) => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        patch(route('tenant.jobs.update', job.id));
+        put(route('tenant.jobs.update', job.id));
     };
 
     const priorityOptions = [
@@ -277,6 +288,24 @@ const EditJob: React.FC<Props> = ({ job, locations, sectors }) => {
                                                 <Button type="button" onClick={addSkill} variant="outline" size="sm">
                                                     <Plus className="h-4 w-4" />
                                                 </Button>
+                                            </div>
+                                            <div className="mt-2">
+                                      
+
+                                                {skills.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {skills.map((skill, index) => (
+                                                            <span
+                                                                key={index}
+                                                                className="flex items-center gap-1 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                                                            >
+                                                                {skill.name}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-500 mb-6">Brak umiejętności</span>
+                                                )}
                                             </div>
                                             
                                             {data.required_skills.length > 0 && (

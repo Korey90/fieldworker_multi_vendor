@@ -38,6 +38,10 @@ class NotificationController extends Controller
      */
     public function index(Request $request): InertiaResponse
     {
+        // Check if user can view notifications
+        if (Auth::user()->cannot('viewAny', Notification::class)) {
+            abort(403, 'Unauthorized to view notifications.');
+        }
 
         // Build query scoped to current tenant
         $query = Notification::with('user')
@@ -112,6 +116,11 @@ class NotificationController extends Controller
      */
     public function create(): InertiaResponse
     {
+        // Check if user can create notifications
+        if (Auth::user()->cannot('create', Notification::class)) {
+            abort(403, 'Unauthorized to create notifications.');
+        }
+
         // Get users within current tenant
         $users = User::where('tenant_id', $this->tenantId)
             ->select('id', 'name', 'email')
@@ -128,6 +137,11 @@ class NotificationController extends Controller
      */
     public function store(Request $request)
     {
+        // Check if user can create notifications
+        if (Auth::user()->cannot('create', Notification::class)) {
+            abort(403, 'Unauthorized to create notifications.');
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'message' => 'required|string',
@@ -161,6 +175,11 @@ class NotificationController extends Controller
      */
     public function show(Notification $notification): InertiaResponse
     {
+        // Check if user can view notifications
+        if (Auth::user()->cannot('view', $notification)) {
+            abort(403, 'Unauthorized to view this notification.');
+        }
+
         // Ensure notification belongs to current tenant
         if ($notification->tenant_id !== $this->tenantId) {
             abort(404);
@@ -178,6 +197,11 @@ class NotificationController extends Controller
      */
     public function update(Request $request, Notification $notification)
     {
+        // Check if user can update notifications
+        if (Auth::user()->cannot('update', $notification)) {
+            abort(403, 'Unauthorized to update this notification.');
+        }
+
         // Ensure notification belongs to current tenant
         if ($notification->tenant_id !== $this->tenantId) {
             abort(404);
@@ -209,6 +233,11 @@ class NotificationController extends Controller
      */
     public function destroy(Notification $notification)
     {
+        // Check if user can delete notifications
+        if (Auth::user()->cannot('delete', $notification)) {
+            abort(403, 'Unauthorized to delete this notification.');
+        }
+
         // Ensure notification belongs to current tenant
         if ($notification->tenant_id !== $this->tenantId) {
             abort(404);
@@ -225,6 +254,11 @@ class NotificationController extends Controller
      */
     public function markAsRead(Notification $notification)
     {
+        // Check if user can update notifications
+        if (Auth::user()->cannot('markAsRead', $notification)) {
+            abort(403, 'Unauthorized to mark this notification as read.');
+        }
+
         // Ensure notification belongs to current tenant
         if ($notification->tenant_id !== $this->tenantId) {
             abort(404);
@@ -243,6 +277,11 @@ class NotificationController extends Controller
      */
     public function markAllAsRead()
     {
+        // Check if user can markAsRead notifications
+        if (Auth::user()->cannot('markAsRead', Notification::class)) {
+            abort(403, 'Unauthorized to mark notifications as read.');
+        }
+
         Notification::where('tenant_id', $this->tenantId)
             ->where('is_read', false)
             ->update([

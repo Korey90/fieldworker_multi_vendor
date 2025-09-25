@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
+
 class FormController extends Controller
 {
     protected $tenantId;
@@ -26,9 +27,13 @@ class FormController extends Controller
         });
     }
 
-
     public function index(Request $request)
     {
+        // Check if user can view Forms
+        if (Auth::user()->cannot('viewAny', Form::class)) {
+            abort(403, 'Unauthorized to view forms.');
+        }
+
 
         $query = Form::where('tenant_id', $this->tenantId)
             ->with(['responses' => function($q) {
@@ -89,6 +94,10 @@ class FormController extends Controller
 
     public function create(Request $request)
     {
+        // Check if user can create Forms
+        if (Auth::user()->cannot('create', Form::class)) {
+            abort(403, 'Unauthorized to create forms.');
+        }
 
         // Get available form types
         $formTypes = [
@@ -108,6 +117,10 @@ class FormController extends Controller
 
     public function store(Request $request)
     {
+        // Check if user can create Forms
+        if (Auth::user()->cannot('create', Form::class)) {
+            abort(403, 'Unauthorized to create forms.');
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -134,9 +147,12 @@ class FormController extends Controller
             ->with('success', 'Form created successfully.');
     }
 
-
-        public function update(Request $request, Form $form)
+    public function update(Request $request, Form $form)
     {
+        // Check if user can update Forms
+        if (Auth::user()->cannot('update', $form)) {
+            abort(403, 'Unauthorized to update forms.');
+        }
         
         // Ensure form belongs to current tenant
         if ($form->tenant_id !== $this->tenantId) {
@@ -169,6 +185,10 @@ class FormController extends Controller
 
     public function show(Form $form)
     {
+        // Check if user can view Form
+        if (Auth::user()->cannot('view', $form)) {
+            abort(403, 'Unauthorized to view form.');
+        }
         
         // Ensure form belongs to current tenant
         if ($form->tenant_id !== $this->tenantId) {
@@ -216,6 +236,10 @@ class FormController extends Controller
 
     public function edit(Form $form)
     {
+        // Check if user can update Forms
+        if (Auth::user()->cannot('update', $form)) {
+            abort(403, 'Unauthorized to update forms.');
+        }
 
         
         // Ensure form belongs to current tenant
@@ -240,10 +264,12 @@ class FormController extends Controller
         ]);
     }
 
-
-
     public function destroy(Form $form)
     {
+        // Check if user can delete Forms
+        if (Auth::user()->cannot('delete', $form)) {
+            abort(403, 'Unauthorized to delete forms.');
+        }
         
         // Ensure form belongs to current tenant
         if ($form->tenant_id !== $this->tenantId) {
