@@ -22,7 +22,7 @@ class WorkerController extends Controller
     public function __construct()
     {
         // Apply middleware to ensure only authenticated users with tenant access
-        $this->middleware(['auth', 'tenant']);
+        $this->middleware(['auth', 'role:tenant,admin']);
 
         $this->middleware(function ($request, $next) {
             $this->tenantId = Auth::user()->tenant_id;
@@ -41,7 +41,7 @@ class WorkerController extends Controller
         }
         
         $query = Worker::where('tenant_id', $this->tenantId)
-            ->with(['user', 'location', 'skills', 'jobAssignments.job'])
+            ->with(['location', 'skills', 'jobAssignments.job'])
             ->orderBy('created_at', 'desc');
 
         // Apply filters

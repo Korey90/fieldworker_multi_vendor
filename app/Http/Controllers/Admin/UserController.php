@@ -31,9 +31,7 @@ class UserController extends Controller
 
         $users = $query->paginate(50);
                 
-        $roles = Role::where('tenant_id', auth()->user()->tenant_id)
-                    ->orWhere('tenant_id', null)
-                    ->get();
+        $roles = Role::all();
 
         return Inertia::render('admin/users/index', [
             'users' => $users,
@@ -44,11 +42,9 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $user->load(['roles.permissions', 'permissions', 'tenant', 'worker']);
+        $user->load(['roles.permissions', 'permissions', 'tenant']);
         
-        $availableRoles = Role::where('tenant_id', auth()->user()->tenant_id)
-                             ->orWhere('tenant_id', null)
-                             ->get();
+        $availableRoles = Role::all();
 
         $allPermissions = $user->getAllPermissions();
 
@@ -61,9 +57,7 @@ class UserController extends Controller
 
     public function create()
     {
-        $roles = Role::where('tenant_id', auth()->user()->tenant_id)
-                    ->orWhere('tenant_id', null)
-                    ->get();
+        $roles = Role::all();
 
         return Inertia::render('admin/users/create', [
             'roles' => $roles
@@ -84,7 +78,6 @@ class UserController extends Controller
         ]);
 
         $user = User::create([
-            'tenant_id' => auth()->user()->tenant_id,
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
@@ -105,9 +98,7 @@ class UserController extends Controller
     {
         $user->load('roles');
         
-        $roles = Role::where('tenant_id', auth()->user()->tenant_id)
-                    ->orWhere('tenant_id', null)
-                    ->get();
+        $roles = Role::all();
 
         return Inertia::render('admin/users/edit', [
             'user' => $user,
@@ -117,6 +108,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],

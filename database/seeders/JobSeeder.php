@@ -58,7 +58,7 @@ class JobSeeder extends Seeder
 
     private function getRandomStatus(): string
     {
-        $statuses = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled'];
+        $statuses = ['assigned', 'in_progress', 'completed', 'cancelled', 'declined', 'pending'];
         $weights = [15, 20, 25, 35, 5]; // Percentage distribution
         
         $random = rand(1, 100);
@@ -257,17 +257,21 @@ class JobSeeder extends Seeder
     {
         switch ($jobStatus) {
             case 'pending':
-                return 'assigned';
+                return 'pending';       // job utworzony, ale bez przypisania
             case 'assigned':
-                return 'assigned';
+                return 'assigned';      // przypisany do pracownika
             case 'in_progress':
-                return 'in_progress';
+                return 'in_progress';   // job rozpoczęty
             case 'completed':
-                return 'completed';
+                return 'completed';     // job zakończony
             case 'cancelled':
-                return 'cancelled';
+                return 'cancelled';     // job anulowany
+            case 'on_hold':
+                return 'on_hold';       // job wstrzymany
+            case 'failed':
+                return 'failed';        // zakończony niepowodzeniem
             default:
-                return 'assigned';
+                return 'pending';
         }
     }
 

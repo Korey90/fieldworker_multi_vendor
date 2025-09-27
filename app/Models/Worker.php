@@ -69,10 +69,22 @@ class Worker extends Model
         return $this->hasMany(JobAssignment::class);
     }
 
-    public function currentJob(): BelongsTo
+    public function currentJob()
     {
-        return $this->belongsTo(Job::class, 'current_job_id');
+        return $this->hasOneThrough(
+            Job::class,
+            JobAssignment::class,
+            'worker_id', // FK w job_assignments
+            'id',        // PK w tenant_jobs
+            'id',        // PK w workers
+            'job_id'     // FK w job_assignments
+        )->where('job_assignments.status', 'in_progress');
     }
+
+    //public function currentJob(): BelongsTo
+    //{
+    //    return $this->belongsTo(Job::class, 'current_job_id');
+    //}
 
     public function formResponses(): HasMany
     {

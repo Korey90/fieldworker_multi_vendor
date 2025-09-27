@@ -14,10 +14,6 @@ class RoleController extends Controller
     public function index(Request $request)
     {
         $query = Role::with(['permissions', 'users'])
-            ->where(function($q) {
-                $q->where('tenant_id', auth()->user()->tenant_id)
-                  ->orWhere('tenant_id', null);
-            })
             ->when($request->search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%");
@@ -68,7 +64,6 @@ class RoleController extends Controller
         ]);
 
         $role = Role::create([
-            'tenant_id' => auth()->user()->tenant_id,
             'name' => $validated['name'],
             'description' => $validated['description'],
             'slug' => $validated['slug'],

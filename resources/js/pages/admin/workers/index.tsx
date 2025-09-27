@@ -28,20 +28,24 @@ import { type BreadcrumbItem } from '@/types';
 
 interface Worker {
     id: string;
-    user: {
-        name: string;
-        email: string;
-        phone?: string;
-        avatar?: string;
-    };
+    tenant_id: string;
+    location_id?: string;
+    employee_number: string;
+    first_name: string;
+    last_name: string;
+    dob: string; // date of birth
+    insurance_number: string;
+    phone?: string;
+    email: string;
+    hire_date: string;
+    hourly_rate: number;
+    status: 'active' | 'inactive' | 'on_leave';
+    data: string;
+    last_activity: string;
     tenant: {
         id: string;
         name: string;
     };
-    employee_id: string;
-    hire_date: string;
-    hourly_rate: number;
-    status: 'active' | 'inactive' | 'on_leave';
     location?: {
         name: string;
         address: string;
@@ -62,7 +66,6 @@ interface Worker {
         title: string;
         location: string;
     };
-    last_activity: string;
 }
 
 interface Location {
@@ -425,11 +428,11 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center space-x-3">
                                             <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                                                {worker.user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
+                                                {`${worker.first_name[0]}${worker.last_name[0]}`.toUpperCase()}
                                             </div>
                                             <div>
-                                                <CardTitle className="text-lg">{worker.user.name}</CardTitle>
-                                                <p className="text-sm text-muted-foreground">#{worker.employee_id}</p>
+                                                <CardTitle className="text-lg">{worker.first_name} {worker.last_name}</CardTitle>
+                                                <p className="text-sm text-muted-foreground">#{worker.employee_number}</p>
                                             </div>
                                         </div>
                                         <Badge variant={getStatusColor(worker.status)}>
@@ -451,17 +454,18 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                                     <div className="space-y-2">
                                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                                             <Mail className="h-4 w-4" />
-                                            <span className="truncate">{worker.user.email}</span>
+                                            <span className="truncate">{worker.email}</span>
                                         </div>
-                                        {worker.user.phone && (
+                                        {worker.phone && (
                                             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                                                 <Phone className="h-4 w-4" />
-                                                <span>{worker.user.phone}</span>
+                                                <span>{worker.phone}</span>
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Current Job */}
+                                    
                                     {worker.current_job && (
                                         <div className="p-3 bg-muted/50 rounded-lg">
                                             <div className="flex items-center space-x-2 text-sm">
@@ -469,10 +473,10 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                                                 <span className="font-medium">Current Job:</span>
                                             </div>
                                             <p className="text-sm text-muted-foreground mt-1 truncate">
-                                                {worker.current_job.title}
+                                                {worker.current_job.title}co
                                             </p>
                                             <p className="text-xs text-muted-foreground truncate">
-                                                📍 {worker.current_job.location}
+                                                📍 {worker.current_job.location}to
                                             </p>
                                         </div>
                                     )}
@@ -494,28 +498,26 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                                         </div>
                                     </div>
 
-                                    {/* Certifications */}
-                                    <div>
-                                        <div className="text-xs font-medium text-muted-foreground mb-2">Certifications</div>
-                                        <div className="space-y-1">
-                                            {worker.certifications.slice(0, 2).map((cert: any) => (
-                                                <div key={cert.id} className="flex items-center justify-between text-xs">
-                                                    <span className="truncate">{cert.name}</span>
-                                                    <Badge 
-                                                        variant={cert.status === 'valid' ? 'default' : cert.status === 'expiring' ? 'destructive' : 'secondary'}
-                                                        className="text-xs"
-                                                    >
-                                                        {cert.status}
-                                                    </Badge>
-                                                </div>
-                                            ))}
-                                            {worker.certifications.length > 2 && (
-                                                <p className="text-xs text-muted-foreground">
-                                                    +{worker.certifications.length - 2} more certifications
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
+{/* Certifications */}
+<div>
+  <div className="text-xs font-medium text-muted-foreground mb-2">Certifications</div>
+  <div className="space-y-1">
+    {worker.certifications.slice(0, 2).map((cert: any) => (
+      <div key={cert.id} className="flex items-center justify-between text-xs">
+        <span className="truncate">{cert.name}</span>
+        <Badge className={`text-xs ${getCertificationColor(cert.status)}`}>
+          {cert.status}
+        </Badge>
+      </div>
+    ))}
+    {worker.certifications.length > 2 && (
+      <p className="text-xs text-muted-foreground">
+        +{worker.certifications.length - 2} more certifications
+      </p>
+    )}
+  </div>
+</div>
+
 
                                     {/* Actions */}
                                     <div className="flex justify-between space-x-2 pt-2">
@@ -562,11 +564,11 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                                             <TableCell>
                                                 <div className="flex items-center space-x-3">
                                                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xs">
-                                                        {worker.user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
+                                                        {`${worker.first_name[0]}${worker.last_name[0]}`.toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <div className="font-medium">{worker.user.name}</div>
-                                                        <div className="text-sm text-muted-foreground">#{worker.employee_id}</div>
+                                                        <div className="font-medium">{worker.first_name} {worker.last_name}</div>
+                                                        <div className="text-sm text-muted-foreground">#{worker.employee_number}</div>
                                                     </div>
                                                 </div>
                                             </TableCell>

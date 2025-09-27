@@ -19,7 +19,7 @@ class DashboardController extends Controller
     public function __construct()
     {
         // Apply middleware to ensure only authenticated users with tenant access
-        $this->middleware(['auth', 'tenant']);
+        $this->middleware(['auth', 'role:admin,tenant']);
 
         $this->middleware(function ($request, $next) {
             $this->tenantId = Auth::user()->tenant_id;

@@ -14,22 +14,22 @@ return new class extends Migration
         Schema::create('tenant_jobs', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('tenant_id');
-            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
-
+            $table->uuid('location_id')->nullable();
+            $table->uuid('assigned_user_id')->nullable();
+            
             $table->string('title');
             $table->text('description')->nullable();
-            $table->uuid('location_id')->nullable();
-            $table->foreign('location_id')->references('id')->on('locations')->onDelete('set null');
-            $table->uuid('assigned_user_id')->nullable();
-            $table->foreign('assigned_user_id')->references('id')->on('users')->onDelete('set null');
-
             $table->string('status')->default('pending');
             $table->dateTime('scheduled_at')->nullable();
             $table->dateTime('completed_at')->nullable();
             $table->json('data')->nullable();
-
+            
             $table->timestamps();
             $table->softDeletes();
+            
+            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
+            $table->foreign('location_id')->references('id')->on('locations')->onDelete('set null');
+            $table->foreign('assigned_user_id')->references('id')->on('users')->onDelete('set null');
         });
     }
 

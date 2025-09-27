@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('last_name');
             $table->date('dob')->nullable();
             $table->string('insurance_number')->nullable(); // wrażliwe → szyfrow
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
             $table->datetime('hire_date')->nullable();
             $table->decimal('hourly_rate', 8, 2)->nullable();
             $table->string('status')->default('active');

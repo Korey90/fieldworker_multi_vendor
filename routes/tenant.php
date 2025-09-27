@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // Tenant Admin Routes - for users managing their own tenant/organization
-Route::middleware(['auth', 'role:admin,tenant'])
+Route::middleware(['auth', 'role:tenant,admin'])
     ->prefix('tenant')
     ->name('tenant.')
     ->group(function () {

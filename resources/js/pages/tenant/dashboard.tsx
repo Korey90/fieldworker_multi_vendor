@@ -111,13 +111,13 @@ export default function TenantDashboard({ stats, recentNotifications, quickActio
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`${tenant.name} - Dashboard`} />
+            <Head title={'Your Organization - Dashboard'} />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-6">
                 {/* Header */}
                 <div className="flex flex-col space-y-2">
                     <h1 className="text-3xl font-bold tracking-tight">Tenant Dashboard</h1>
                     <p className="text-muted-foreground">
-                        Monitor and manage operations for {tenant.name}
+                        Monitor and manage operations for {tenant?.name || 'your organization'}.
                     </p>
                 </div>
 

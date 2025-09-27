@@ -47,9 +47,9 @@ class Job extends Model
         return $this->belongsTo(User::class, 'assigned_user_id');
     }
 
-    public function user(): BelongsTo
+    public function user(): HasMany
     {
-        return $this->belongsTo(User::class, 'assigned_user_id');
+        return $this->hasMany(User::class, 'assigned_user_id');
     }
 
     public function assignments(): HasMany

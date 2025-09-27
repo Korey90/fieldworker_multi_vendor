@@ -14,130 +14,118 @@ class WorkerController extends Controller
     /**
      * Display a listing of workers.
      */
-    public function index(Request $request): Response
-    {
-        $user = auth()->user();
+public function index(Request $request): Response
+{
+    $user = auth()->user();
 
-        // Build query with filters - Admin sees all workers from all tenants
-        $query = Worker::with([
-                'user:id,name,email,phone',
-                'skills:id,name,category',
-                'certifications:id,name',
-                'location:id,name,address',
-                'tenant:id,name' // Add tenant info for admin
-            ]);
+    // Build query with filters
+    $query = Worker::with([
+        'skills:id,name,category',
+        'certifications:id,name',
+        'location:id,name,address',
+        'tenant:id,name',
+        'currentJob.location:id,name,address',
+    ]);
 
-        // Apply search filter
-        if ($request->filled('search')) {
-            $search = $request->get('search');
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            })->orWhere('employee_number', 'like', "%{$search}%");
-        }
+    // Apply search filter
+    if ($request->filled('search')) {
+        $search = $request->get('search');
+        $query->where(function ($q) use ($search) {
+            $q->where('employee_number', 'like', "%{$search}%")
+              ->orWhere('name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%");
+        });
+    }
 
-        // Apply tenant filter (for admin)
-        if ($request->filled('tenant')) {
-            $query->where('tenant_id', $request->get('tenant'));
-        }
+    // Tenant filter
+    if ($request->filled('tenant')) {
+        $query->where('tenant_id', $request->get('tenant'));
+    }
 
-        // Apply status filter
-        if ($request->filled('status')) {
-            $query->where('status', $request->get('status'));
-        }
+    // Status filter
+    if ($request->filled('status')) {
+        $query->where('status', $request->get('status'));
+    }
 
-        // Apply location filter
-        if ($request->filled('location')) {
-            $query->where('location_id', $request->get('location'));
-        }
+    // Location filter
+    if ($request->filled('location')) {
+        $query->where('location_id', $request->get('location'));
+    }
 
-        // Apply skills filter
-        if ($request->filled('skills')) {
-            $skills = is_array($request->get('skills')) 
-                ? $request->get('skills') 
-                : [$request->get('skills')];
-            
-            $query->whereHas('skills', function ($q) use ($skills) {
-                $q->whereIn('skills.id', $skills);
-            });
-        }
+    // Skills filter
+    if ($request->filled('skills')) {
+        $skills = is_array($request->get('skills')) ? $request->get('skills') : [$request->get('skills')];
+        $query->whereHas('skills', fn($q) => $q->whereIn('skills.id', $skills));
+    }
 
-        // Get workers with pagination
-        $workers = $query->orderBy('created_at', 'desc')
-            ->paginate(20)
-            ->through(function ($worker) {
-                // Get current active job for worker
-                $currentJob = Job::where('tenant_id', $worker->tenant_id)
-                    ->whereHas('assignments', function ($q) use ($worker) {
-                        $q->where('worker_id', $worker->id)
-                          ->where('status', 'active');
-                    })
-                    ->with('location:id,name,address')
-                    ->first();
+    // Get workers with pagination
+    $workers = $query->orderBy('created_at', 'desc')
+        ->paginate(20)
+        ->through(function ($worker) {
 
-                return [
-                    'id' => $worker->id,
-                    'user' => [
-                        'name' => $worker->user->name,
-                        'email' => $worker->user->email,
-                        'phone' => $worker->user->phone,
-                    ],
-                    'tenant' => [
-                        'id' => $worker->tenant->id,
-                        'name' => $worker->tenant->name,
-                    ],
-                    'employee_id' => $worker->employee_number,
-                    'hire_date' => $worker->hire_date?->format('Y-m-d'),
-                    'hourly_rate' => $worker->hourly_rate,
-                    'status' => $worker->status,
-                    'location' => $worker->location ? [
-                        'name' => $worker->location->name,
-                        'address' => $worker->location->address,
-                    ] : null,
-                    'skills' => $worker->skills->map(fn($skill) => [
-                        'id' => $skill->id,
-                        'name' => $skill->name,
-                        'level' => $skill->pivot->level ?? 1,
-                    ])->toArray(),
-                    'certifications' => $worker->certifications->map(fn($cert) => [
+            return [
+                'id' => $worker->id,
+                'first_name' => $worker->first_name,
+                'last_name' => $worker->last_name,
+                'email' => $worker->email,
+                'phone' => $worker->phone,
+                'tenant' => [
+                    'id' => $worker->tenant->id,
+                    'name' => $worker->tenant->name,
+                ],
+                'employee_number' => $worker->employee_number,
+                'hire_date' => $worker->hire_date?->format('Y-m-d'),
+                'hourly_rate' => $worker->hourly_rate,
+                'status' => $worker->status,
+                'location' => $worker->location ? [
+                    'name' => $worker->location->name,
+                    'address' => $worker->location->address,
+                ] : null,
+                'skills' => $worker->skills->map(fn($skill) => [
+                    'id' => $skill->id,
+                    'name' => $skill->name,
+                    'level' => $skill->pivot->level ?? 1,
+                ])->toArray(),
+                'certifications' => $worker->certifications->map(function($cert) {
+                    $expiry = $cert->pivot->expires_at
+                        ? \Carbon\Carbon::parse($cert->pivot->expires_at)
+                            ->setTimezone(config('app.timezone'))
+                        : null;
+
+                    return [
                         'id' => $cert->id,
                         'name' => $cert->name,
-                        'expiry_date' => $cert->pivot->expires_at 
-                            ? \Carbon\Carbon::parse($cert->pivot->expires_at)->format('Y-m-d')
-                            : null,
-                        'status' => $this->getCertificationStatus($cert->pivot->expires_at),
-                    ])->toArray(),
-                    'current_job' => $currentJob ? [
-                        'id' => $currentJob->id,
-                        'title' => $currentJob->title,
-                        'location' => $currentJob->location?->name ?? 'Unknown',
-                    ] : null,
-                    'last_activity' => $worker->updated_at->diffForHumans(),
-                ];
-            });
+                        'expiry_date' => $expiry?->format('Y-m-d'),
+                        'status' => $this->getCertificationStatus($expiry),
+                    ];
+                })->toArray(),
+                'current_job' => $worker->currentJob ? [
+                    'id' => $worker->currentJob->id,
+                    'title' => $worker->currentJob->title,
+                    'location' => $worker->currentJob->location?->name ?? 'Unknown',
+                ] : null,
+                'last_activity' => $worker->updated_at->diffForHumans(),
+            ];
+        });
 
-        return Inertia::render('admin/workers/index', [
-            'workers' => $workers,
-            'filters' => $request->only(['search', 'tenant', 'status', 'location', 'skills']),
-            // Add additional data for filters - Admin sees all locations, tenants
-            'tenants' => \App\Models\Tenant::select('id', 'name')
-                ->orderBy('name')
-                ->get(),
-            'locations' => \App\Models\Location::select('id', 'name', 'tenant_id')
-                ->with('tenant:id,name')
-                ->orderBy('name')
-                ->get(),
-            'skills' => \App\Models\Skill::where('is_active', true)
-                ->select('id', 'name', 'category')
-                ->get(),
-            'stats' => [
-                'total_workers' => Worker::count(),
-                'active_workers' => Worker::where('status', 'active')->count(),
-                'on_leave' => Worker::where('status', 'on_leave')->count(),
-                'inactive_workers' => Worker::where('status', 'inactive')->count(),
-            ],
-        ]);
-    }
+    return Inertia::render('admin/workers/index', [
+        'workers' => $workers,
+        'filters' => $request->only(['search', 'tenant', 'status', 'location', 'skills']),
+        'tenants' => \App\Models\Tenant::select('id', 'name')->orderBy('name')->get(),
+        'locations' => \App\Models\Location::select('id', 'name', 'tenant_id')
+            ->with('tenant:id,name')
+            ->orderBy('name')
+            ->get(),
+        'skills' => \App\Models\Skill::where('is_active', true)->select('id', 'name', 'category')->get(),
+        'stats' => [
+            'total_workers' => Worker::count(),
+            'active_workers' => Worker::where('status', 'active')->count(),
+            'on_leave' => Worker::where('status', 'on_leave')->count(),
+            'inactive_workers' => Worker::where('status', 'inactive')->count(),
+        ],
+    ]);
+}
+
 
     /**
      * Show the form for creating a new worker.
@@ -237,7 +225,6 @@ class WorkerController extends Controller
         $this->authorize('view', $worker);
         
         $worker->load([
-            'user:id,name,email,phone',
             'skills:id,name',
             'certifications:id,name',
             'location:id,name,address',
@@ -248,11 +235,11 @@ class WorkerController extends Controller
         return Inertia::render('admin/workers/show', [
             'worker' => [
                 'id' => $worker->id,
-                'user' => [
-                    'name' => $worker->user->name,
-                    'email' => $worker->user->email,
-                    'phone' => $worker->user->phone,
-                ],
+                'first_name' => $worker->first_name,
+                'last_name' => $worker->last_name,
+                'email' => $worker->email,
+                'phone' => $worker->phone,
+
                 'employee_id' => $worker->employee_number,
                 'hire_date' => $worker->hire_date?->format('Y-m-d'),
                 'hourly_rate' => $worker->hourly_rate,
@@ -395,23 +382,20 @@ class WorkerController extends Controller
     /**
      * Get certification status based on expiry date.
      */
-    private function getCertificationStatus(?string $expiryDate): string
-    {
-        if (!$expiryDate) {
-            return 'unknown';
-        }
+private function getCertificationStatus(?\Carbon\Carbon $expiry): string
+{
+    if (!$expiry) return 'unknown';
 
-        $expiry = \Carbon\Carbon::parse($expiryDate);
-        $now = now();
+    $expiry = $expiry->setTimezone(config('app.timezone'));
+    $now = now();
 
-        if ($expiry->isPast()) {
-            return 'expired';
-        }
+    if ($expiry->isPast()) return 'expired';
+    if ($expiry->between($now, $now->copy()->addDays(30))) return 'expiring';
 
-        if ($expiry->diffInDays($now) <= 30) {
-            return 'expiring';
-        }
+    return 'valid';
+}
 
-        return 'valid';
-    }
+
+
+
 }

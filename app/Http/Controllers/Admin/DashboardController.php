@@ -88,7 +88,7 @@ class DashboardController extends Controller
                       ->orWhere('status', 'warning')
                       ->orWhereRaw('current_usage >= (quota_limit * 0.8)'); // 80% threshold
             })
-            ->orderBy('usage_percentage', 'desc')
+            ->orderBy('current_usage', 'desc')
             ->limit(10)
             ->get()
             ->map(function ($quota) {
