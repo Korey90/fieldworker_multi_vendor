@@ -13,12 +13,15 @@ import {
     Mail,
     Phone,
     DollarSign,
-    Calendar,
     Plus,
     X,
     Award,
-    Save
+    Save,
+    CalendarIcon
 } from 'lucide-react';
+import {Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from "@/components/ui/calendar"
+import { DatePicker } from '@/components/date-picker';
 
 // TypeScript interfaces
 interface Skill {
@@ -38,17 +41,22 @@ interface WorkerSkill {
 
 interface Worker {
     id: string;
+    tenant_id?: string;
     employee_number: string;
+    first_name: string;
+    last_name: string;
+    dob: string | null;
+    insurance_number: string | null;
+    phone: string | null;
+    email: string;
     hire_date: string | null;
     hourly_rate: number | null;
     status: string;
-    user: {
-        id: string;
-        name: string;
-        email: string;
-        phone: string | null;
-    };
+    data: Record<string, any>;
+    created_at: string;
+    updated_at: string;
     skills: WorkerSkill[];
+    tenant: { id: string; name: string; };
 }
 
 interface WorkerEditProps {
@@ -57,10 +65,13 @@ interface WorkerEditProps {
 }
 
 interface WorkerFormData {
-    name: string;
-    email: string;
+    employee_number: string;
+    first_name: string;
+    last_name: string;
+    dob: string | null;
+    insurance_number: string | null;
     phone: string;
-    employee_id: string;
+    email: string;
     hire_date: string;
     hourly_rate: string;
     status: string;
@@ -68,24 +79,32 @@ interface WorkerFormData {
         skill_id: string;
         level: number;
     }>;
+    data: Record<string, any>;
+    tenant_id?: string;
+
 }
 
 export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
     const breadcrumbs = [
         { title: 'Dashboard', href: '/admin/dashboard' },
         { title: 'Workers', href: '/admin/workers' },
-        { title: worker.user.name, href: `/admin/workers/${worker.id}` },
+        { title: worker.first_name, href: `/admin/workers/${worker.id}` },
         { title: 'Edit', href: '' },
     ];
 
     const { data, setData, put, processing, errors } = useForm<WorkerFormData>({
-        name: worker.user.name,
-        email: worker.user.email,
-        phone: worker.user.phone || '',
-        employee_id: worker.employee_number,
+        employee_number: worker.employee_number,
+        tenant_id: worker.tenant_id || '',
+        first_name: worker.first_name,
+        last_name: worker.last_name,
+        dob: worker.dob ? worker.dob.split('T')[0] : null, // Convert to YYYY-MM-DD format
+        insurance_number: worker.insurance_number || '',
+        phone: worker.phone || '',
+        email: worker.email,
         hire_date: worker.hire_date ? worker.hire_date.split('T')[0] : '', // Convert to YYYY-MM-DD format
         hourly_rate: worker.hourly_rate ? worker.hourly_rate.toString() : '',
         status: worker.status,
+        data: worker.data || {},
         skills: worker.skills.map(skill => ({
             skill_id: skill.id,
             level: skill.pivot.level
@@ -184,7 +203,7 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
         <AppLayout
             breadcrumbs={breadcrumbs}
         >
-            <Head title={`Edit ${worker.user.name}`} />
+            <Head title={`Edit ${worker.first_name}`} />
             
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-6">
                 {/* Header */}
@@ -224,43 +243,117 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
                             <CardHeader>
                                 <CardTitle className="flex items-center">
                                     <User className="w-5 h-5 mr-2" />
+                                    Tenant Information
+                                </CardTitle>
+                            </CardHeader>
+
+                            <CardContent className="space-y-4">
+                                {/* Tenant ID */}
+                                <div>
+                                    <Label htmlFor="tenant_id">Tenant ID</Label>
+                                    <Input
+                                        id="tenant_id"
+                                        type="text"
+                                        value={data.tenant_id || ''}
+                                        onChange={(e) => setData('tenant_id', e.target.value)}
+                                        placeholder="Enter tenant ID"
+                                        className={errors.tenant_id ? 'border-red-500' : ''}
+                                        readOnly
+                                    />
+                                    {errors.tenant_id && (
+                                        <p className="text-sm text-red-600 mt-1">{errors.tenant_id}</p>
+                                    )}
+                                    <p className='text-sm text-gray-600 p-1'>{worker.tenant.name}</p>
+                                </div>
+                            </CardContent>
+
+                            <CardHeader>
+                                <CardTitle className="flex items-center">
+                                    <User className="w-5 h-5 mr-2" />
                                     Personal Information
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Full name */}
                                     <div>
                                         <Label htmlFor="name">Full Name *</Label>
+                                        <div className="flex">
+                                            <Input
+                                                id="first_name"
+                                                type="text"
+                                                value={data.first_name}
+                                                onChange={(e) => setData('first_name', e.target.value)}
+                                                placeholder="First name"
+                                                className={`flex-1 rounded-r-none ${errors.first_name ? 'border-red-500' : ''}`}
+                                            />                                            
+                                            <Input
+                                                id="last_name"
+                                                type="text"
+                                                value={data.last_name}
+                                                onChange={(e) => setData('last_name', e.target.value)}
+                                                placeholder="Last name"
+                                                className={`flex-1 rounded-l-none border-l-0 ${errors.last_name ? 'border-red-500' : ''}`}
+                                            />
+                                        </div>
+                                        <div className="flex space-x-2">
+                                            {errors.first_name && (
+                                                <p className="text-sm text-red-600 mt-1">{errors.first_name}</p>
+                                            )}
+                                            {errors.last_name && (
+                                                <p className="text-sm text-red-600 mt-1">{errors.last_name}</p>
+                                            )}
+                                        </div>
+
+                                    </div>
+
+                                    {/* Date of Birth */}
+                                    <div>
+                                      <Label htmlFor="dob">Date of Birth</Label>
+                                      <DatePicker
+                                        value={data.dob ?? undefined}
+                                        onChange={(val) => setData("dob", val)}
+                                      />
+                                      {errors.dob && (
+                                        <p className="text-sm text-red-600 mt-1">{errors.dob}</p>
+                                      )}
+                                    </div>
+
+                                    {/* Insurance Number */}
+                                    <div>
+                                        <Label htmlFor="insurance_number">Insurance Number</Label>
                                         <Input
-                                            id="name"
+                                            id="insurance_number"
                                             type="text"
-                                            value={data.name}
-                                            onChange={(e) => setData('name', e.target.value)}
-                                            placeholder="Enter full name"
-                                            className={errors.name ? 'border-red-500' : ''}
+                                            value={data.insurance_number || ''}
+                                            onChange={(e) => setData('insurance_number', e.target.value)}
+                                            placeholder="Enter insurance number"
+                                            className={errors.insurance_number ? 'border-red-500' : ''}
                                         />
-                                        {errors.name && (
-                                            <p className="text-sm text-red-600 mt-1">{errors.name}</p>
+                                        {errors.insurance_number && (
+                                            <p className="text-sm text-red-600 mt-1">{errors.insurance_number}</p>
                                         )}
                                     </div>
 
+                                    {/* Employee Number */}
                                     <div>
-                                        <Label htmlFor="employee_id">Employee ID *</Label>
+                                        <Label htmlFor="employee_number">Employee Number *</Label>
                                         <Input
-                                            id="employee_id"
+                                            id="employee_number"
                                             type="text"
-                                            value={data.employee_id}
-                                            onChange={(e) => setData('employee_id', e.target.value)}
-                                            placeholder="Enter employee ID"
-                                            className={errors.employee_id ? 'border-red-500' : ''}
+                                            value={data.employee_number}
+                                            onChange={(e) => setData('employee_number', e.target.value)}
+                                            placeholder="Enter employee number"
+                                            className={errors.employee_number ? 'border-red-500' : ''}
                                         />
-                                        {errors.employee_id && (
-                                            <p className="text-sm text-red-600 mt-1">{errors.employee_id}</p>
+                                        {errors.employee_number && (
+                                            <p className="text-sm text-red-600 mt-1">{errors.employee_number}</p>
                                         )}
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Email Address */}
                                     <div>
                                         <Label htmlFor="email">Email Address *</Label>
                                         <div className="relative">
@@ -279,6 +372,7 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
                                         )}
                                     </div>
 
+                                    {/* Phone Number */}
                                     <div>
                                         <Label htmlFor="phone">Phone Number</Label>
                                         <div className="relative">
@@ -299,23 +393,19 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* Hire Date */}
                                     <div>
-                                        <Label htmlFor="hire_date">Hire Date *</Label>
-                                        <div className="relative">
-                                            <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                            <Input
-                                                id="hire_date"
-                                                type="date"
-                                                value={data.hire_date}
-                                                onChange={(e) => setData('hire_date', e.target.value)}
-                                                className={`pl-10 ${errors.hire_date ? 'border-red-500' : ''}`}
-                                            />
-                                        </div>
-                                        {errors.hire_date && (
-                                            <p className="text-sm text-red-600 mt-1">{errors.hire_date}</p>
-                                        )}
+                                      <Label htmlFor="hire_date">Hire Date</Label>
+                                      <DatePicker
+                                        value={data.hire_date}
+                                        onChange={(val) => setData("hire_date", val)}
+                                      />
+                                      {errors.hire_date && (
+                                        <p className="text-sm text-red-600 mt-1">{errors.hire_date}</p>
+                                      )}
                                     </div>
 
+                                    {/* Hourly Rate */}
                                     <div>
                                         <Label htmlFor="hourly_rate">Hourly Rate</Label>
                                         <div className="relative">
@@ -336,6 +426,7 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
                                         )}
                                     </div>
 
+                                    {/* Status */}
                                     <div>
                                         <Label htmlFor="status">Status</Label>
                                         <Select value={data.status} onValueChange={(value) => setData('status', value)}>
@@ -354,7 +445,34 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Created At & Updated At */}
+                                <div className="flex space-x-6 text-sm text-gray-500">
+                                  <p>
+                                    <b>Created At:</b>{" "}
+                                    {new Date(worker.created_at).toLocaleDateString("pl-PL")}
+                                  </p>
+                                  <p>
+                                    <b>Updated At:</b>{" "}
+                                    {new Date(worker.updated_at).toLocaleDateString("pl-PL")}
+                                  </p>
+                                </div>
+
                             </CardContent>
+
+                            {/* JSON Data Section */}
+                            <CardHeader>    
+                                <CardTitle className="flex items-center">
+                                    <Mail className="w-5 h-5 mr-2" />
+                                    Json Data
+                                </CardTitle>
+                                <CardContent>
+                                    <pre className="bg-gray-100 p-4 rounded-md overflow-auto text-sm">
+                                      {JSON.stringify(typeof data.data === "string" ? JSON.parse(data.data) : data.data, null, 2)}
+                                    </pre>
+                                </CardContent>
+
+                            </CardHeader>
                         </Card>
                     </div>
 

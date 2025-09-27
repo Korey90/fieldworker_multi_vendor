@@ -39,7 +39,7 @@ interface Worker {
     email: string;
     hire_date: string;
     hourly_rate: number;
-    status: 'active' | 'inactive' | 'on_leave';
+    status: string;
     data: string;
     last_activity: string;
     tenant: {
@@ -127,29 +127,43 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
     const [locationFilter, setLocationFilter] = useState(filters.location || 'all');
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
-    // Debounced search effect
+    // Debounced search effect - tylko dla wyszukiwania tekstowego
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             if (searchTerm !== (filters.search || '')) {
-                handleFilterChange(searchTerm);
+                applyFilters();
             }
         }, 500);
 
         return () => clearTimeout(timeoutId);
     }, [searchTerm]);
 
-    const handleFilterChange = (newSearch?: string, newTenant?: string, newStatus?: string, newLocation?: string) => {
+    // Natychmiastowe filtrowanie dla select-ów
+    useEffect(() => {
+        if (tenantFilter !== (filters.tenant || 'all')) {
+            applyFilters();
+        }
+    }, [tenantFilter]);
+
+    useEffect(() => {
+        if (statusFilter !== (filters.status || 'all')) {
+            applyFilters();
+        }
+    }, [statusFilter]);
+
+    useEffect(() => {
+        if (locationFilter !== (filters.location || 'all')) {
+            applyFilters();
+        }
+    }, [locationFilter]);
+
+    const applyFilters = () => {
         const params = new URLSearchParams();
         
-        const search = newSearch !== undefined ? newSearch : searchTerm;
-        const tenant = newTenant !== undefined ? newTenant : tenantFilter;
-        const status = newStatus !== undefined ? newStatus : statusFilter;
-        const location = newLocation !== undefined ? newLocation : locationFilter;
-        
-        if (search) params.set('search', search);
-        if (tenant !== 'all') params.set('tenant', tenant);
-        if (status !== 'all') params.set('status', status);
-        if (location !== 'all') params.set('location', location);
+        if (searchTerm) params.set('search', searchTerm);
+        if (tenantFilter !== 'all') params.set('tenant', tenantFilter);
+        if (statusFilter !== 'all') params.set('status', statusFilter);
+        if (locationFilter !== 'all') params.set('location', locationFilter);
         
         router.get(route('admin.workers.index'), Object.fromEntries(params), {
             preserveState: true,
@@ -171,11 +185,13 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
     const getStatusColor = (status: Worker['status']) => {
         switch (status) {
             case 'active':
-                return 'default';
+                return 'success';
             case 'inactive':
                 return 'secondary';
             case 'on_leave':
                 return 'outline';
+            case 'suspended':
+                return 'destructive';
             default:
                 return 'secondary';
         }
@@ -189,6 +205,8 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                 return 'Inactive';
             case 'on_leave':
                 return 'On Leave';
+            case 'suspended':
+                return 'Suspended';
             default:
                 return 'Unknown';
         }
@@ -306,14 +324,14 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                     <CardHeader>
                         <CardTitle className="flex items-center space-x-2">
                             <Search className="h-5 w-5" />
-                            <span>Filters</span>
+                            <span>Filtry (filtrowanie na żywo)</span>
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <div>
                                 <Input
-                                    placeholder="Search workers..."
+                                    placeholder="Szukaj pracowników..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
@@ -322,16 +340,13 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                             <div>
                                 <Select 
                                     value={tenantFilter} 
-                                    onValueChange={(value) => {
-                                        setTenantFilter(value);
-                                        handleFilterChange(undefined, value);
-                                    }}
+                                    onValueChange={(value) => setTenantFilter(value)}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="All Tenants" />
+                                        <SelectValue placeholder="Wszyscy najemcy" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Tenants</SelectItem>
+                                        <SelectItem value="all">Wszyscy najemcy</SelectItem>
                                         {tenants.map((tenant) => (
                                             <SelectItem key={tenant.id} value={tenant.id}>
                                                 {tenant.name}
@@ -344,19 +359,16 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                             <div>
                                 <Select 
                                     value={statusFilter} 
-                                    onValueChange={(value) => {
-                                        setStatusFilter(value);
-                                        handleFilterChange(undefined, undefined, value);
-                                    }}
+                                    onValueChange={(value) => setStatusFilter(value)}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="All Statuses" />
+                                        <SelectValue placeholder="Wszystkie statusy" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Statuses</SelectItem>
-                                        <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="inactive">Inactive</SelectItem>
-                                        <SelectItem value="on_leave">On Leave</SelectItem>
+                                        <SelectItem value="all">Wszystkie statusy</SelectItem>
+                                        <SelectItem value="active">Aktywny</SelectItem>
+                                        <SelectItem value="inactive">Nieaktywny</SelectItem>
+                                        <SelectItem value="on_leave">Na urlopie</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -364,16 +376,13 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                             <div>
                                 <Select 
                                     value={locationFilter} 
-                                    onValueChange={(value) => {
-                                        setLocationFilter(value);
-                                        handleFilterChange(undefined, undefined, undefined, value);
-                                    }}
+                                    onValueChange={(value) => setLocationFilter(value)}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="All Locations" />
+                                        <SelectValue placeholder="Wszystkie lokalizacje" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Locations</SelectItem>
+                                        <SelectItem value="all">Wszystkie lokalizacje</SelectItem>
                                         {locations.map((location) => (
                                             <SelectItem key={location.id} value={location.id}>
                                                 {location.name}
@@ -391,7 +400,7 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
                                     onClick={clearFilters}
                                     disabled={!searchTerm && tenantFilter === 'all' && statusFilter === 'all' && locationFilter === 'all'}
                                 >
-                                    Clear Filters
+                                    Wyczyść filtry
                                 </Button>
                                 <div className="flex border rounded-md">
                                     <Button

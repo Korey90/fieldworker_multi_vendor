@@ -28,14 +28,22 @@ public function index(Request $request): Response
     ]);
 
     // Apply search filter
-    if ($request->filled('search')) {
-        $search = $request->get('search');
-        $query->where(function ($q) use ($search) {
-            $q->where('employee_number', 'like', "%{$search}%")
-              ->orWhere('name', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%");
-        });
-    }
+if ($request->filled('search')) {
+    $searchTerms = explode(' ', $request->get('search'));
+
+    $query->where(function ($q) use ($searchTerms) {
+        foreach ($searchTerms as $term) {
+            $q->where(function ($q2) use ($term) {
+                $q2->where('employee_number', 'like', "%{$term}%")
+                   ->orWhere('first_name', 'like', "%{$term}%")
+                   ->orWhere('last_name', 'like', "%{$term}%")
+                   ->orWhere('phone', 'like', "%{$term}%")
+                   ->orWhere('email', 'like', "%{$term}%");
+            });
+        }
+    });
+}
+
 
     // Tenant filter
     if ($request->filled('tenant')) {
@@ -291,7 +299,7 @@ public function index(Request $request): Response
             ->get();
         
         return Inertia::render('admin/workers/edit', [
-            'worker' => $worker->load(['user', 'skills', 'tenant']),
+            'worker' => $worker->load(['skills', 'tenant']),
             'skills' => $skills,
             'tenants' => $tenants,
         ]);
@@ -307,7 +315,8 @@ public function index(Request $request): Response
         // Validate the request - Admin can change tenant
         $validated = $request->validate([
             'tenant_id' => 'required|exists:tenants,id',
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $worker->user_id,
             'phone' => 'nullable|string|max:20',
             'employee_id' => 'required|string|max:50|unique:workers,employee_number,' . $worker->id,
@@ -382,9 +391,11 @@ public function index(Request $request): Response
     /**
      * Get certification status based on expiry date.
      */
-private function getCertificationStatus(?\Carbon\Carbon $expiry): string
+private function getCertificationStatus(?string $expiryDate): string
 {
-    if (!$expiry) return 'unknown';
+    if (!$expiryDate) return 'unknown';
+
+    $expiry = \Carbon\Carbon::parse($expiryDate);
 
     $expiry = $expiry->setTimezone(config('app.timezone'));
     $now = now();

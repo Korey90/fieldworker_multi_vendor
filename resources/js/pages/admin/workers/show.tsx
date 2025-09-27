@@ -22,11 +22,11 @@ import {
 } from 'lucide-react';
 
 // TypeScript interfaces
-interface User {
+interface Tenant {
     id: string;
     name: string;
-    email: string;
-    phone?: string;
+    sector: string;
+    data: Record<string, any>;
 }
 
 interface Location {
@@ -66,16 +66,27 @@ interface JobAssignment {
 
 interface Worker {
     id: string;
-    employee_id: string;
-    status: 'active' | 'inactive' | 'on_leave';
+    employee_number: string;
+    first_name: string;
+    last_name: string;
+    dob?: string;
+    insurance_number?: string;
+    phone?: string;
+    email: string;
     hire_date?: string;
     hourly_rate?: number;
-    user: User;
-    location?: Location;
+    status: string;
+    data: Record<string, any>;
+    location: Location[] | null;
     skills: Skill[];
+    tenant: Tenant[];
     certifications: Certification[];
     job_history: JobAssignment[];
 }
+
+
+"{\"notes\":\"Dolorem qui dolor excepturi culpa tempora ut.\",\"skills\":[\"et\",\"sed\",\"sed\",\"magni\"]}"
+
 
 interface WorkerShowProps {
     worker: Worker;
@@ -85,7 +96,7 @@ export default function WorkerShow({ worker }: WorkerShowProps) {
     const breadcrumbs = [
         { title: 'Dashboard', href: '/admin/dashboard' },
         { title: 'Workers', href: '/admin/workers' },
-        { title: worker.user.name, href: '' },
+        { title: worker.first_name, href: '' },
     ];
 
     const getStatusColor = (status: Worker['status']) => {
@@ -96,6 +107,8 @@ export default function WorkerShow({ worker }: WorkerShowProps) {
                 return 'secondary';
             case 'on_leave':
                 return 'outline';
+            case 'suspended':
+                return 'destructive';
             default:
                 return 'secondary';
         }
@@ -109,6 +122,8 @@ export default function WorkerShow({ worker }: WorkerShowProps) {
                 return 'Inactive';
             case 'on_leave':
                 return 'On Leave';
+            case 'suspended':
+                return 'Suspended';
             default:
                 return 'Unknown';
         }
@@ -149,14 +164,22 @@ export default function WorkerShow({ worker }: WorkerShowProps) {
         return new Date(dateString).toLocaleDateString();
     };
 
-    const formatCurrency = (amount?: number) => {
-        if (!amount) return 'Not specified';
-        return `$${amount.toFixed(2)}/hour`;
-    };
+const formatCurrency = (amount?: number | string) => {
+    if (amount == null) return 'Not specified';
+
+    // jeśli amount jest stringiem, zamieniamy na number
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+
+    // jeśli nie udało się sparsować liczby, zwracamy Not specified
+    if (isNaN(num)) return 'Not specified';
+
+    return `$${num.toFixed(2)}/hour`;
+};
+
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`Worker: ${worker.user.name}`} />
+            <Head title={`Worker: ${worker.first_name} ${worker.last_name}`} />
             
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-6">
                 {/* Header with Back Button */}
@@ -199,40 +222,40 @@ export default function WorkerShow({ worker }: WorkerShowProps) {
                         <div className="flex items-start space-x-6">
                             {/* Avatar */}
                             <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
-                                {worker.user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                {`${worker.first_name[0]}${worker.last_name[0]}`.toUpperCase()}
                             </div>
                             
                             {/* Basic Info */}
                             <div className="flex-1">
                                 <div className="flex items-center space-x-4 mb-2">
-                                    <h2 className="text-2xl font-bold">{worker.user.name}</h2>
+                                    <h2 className="text-2xl font-bold">{worker.first_name} {worker.last_name}</h2>
                                     <Badge variant={getStatusColor(worker.status)}>
                                         {getStatusText(worker.status)}
                                     </Badge>
                                 </div>
                                 
                                 <p className="text-muted-foreground mb-4">
-                                    Employee ID: #{worker.employee_id}
+                                    Employee ID: #{worker.employee_number}
                                 </p>
                                 
                                 {/* Contact Info */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                                         <Mail className="h-4 w-4" />
-                                        <span>{worker.user.email}</span>
+                                        <span>{worker.email}</span>
                                     </div>
                                     
-                                    {worker.user.phone && (
+                                    {worker.phone && (
                                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                                             <Phone className="h-4 w-4" />
-                                            <span>{worker.user.phone}</span>
+                                            <span>{worker.phone}</span>
                                         </div>
                                     )}
                                     
                                     {worker.location && (
                                         <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                                             <MapPin className="h-4 w-4" />
-                                            <span>{worker.location.name}</span>
+                                            <span>{worker.location?.name}</span>
                                         </div>
                                     )}
                                     
@@ -300,7 +323,7 @@ export default function WorkerShow({ worker }: WorkerShowProps) {
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm font-medium">Location:</span>
                                         <span className="text-sm text-muted-foreground">
-                                            {worker.location?.name || 'Not assigned'}
+                                            {worker?.location?.name || 'Not assigned'}
                                         </span>
                                     </div>
                                 </CardContent>
