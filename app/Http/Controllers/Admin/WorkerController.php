@@ -28,21 +28,21 @@ public function index(Request $request): Response
     ]);
 
     // Apply search filter
-if ($request->filled('search')) {
-    $searchTerms = explode(' ', $request->get('search'));
+    if ($request->filled('search')) {
+        $searchTerms = explode(' ', $request->get('search'));
 
-    $query->where(function ($q) use ($searchTerms) {
-        foreach ($searchTerms as $term) {
-            $q->where(function ($q2) use ($term) {
-                $q2->where('employee_number', 'like', "%{$term}%")
-                   ->orWhere('first_name', 'like', "%{$term}%")
-                   ->orWhere('last_name', 'like', "%{$term}%")
-                   ->orWhere('phone', 'like', "%{$term}%")
-                   ->orWhere('email', 'like', "%{$term}%");
-            });
-        }
-    });
-}
+        $query->where(function ($q) use ($searchTerms) {
+            foreach ($searchTerms as $term) {
+                $q->where(function ($q2) use ($term) {
+                    $q2->where('employee_number', 'like', "%{$term}%")
+                       ->orWhere('first_name', 'like', "%{$term}%")
+                       ->orWhere('last_name', 'like', "%{$term}%")
+                       ->orWhere('phone', 'like', "%{$term}%")
+                       ->orWhere('email', 'like', "%{$term}%");
+                });
+            }
+        });
+    }
 
 
     // Tenant filter
@@ -163,43 +163,64 @@ if ($request->filled('search')) {
         // Validate the request - Admin can select tenant
         $validated = $request->validate([
             'tenant_id' => 'required|exists:tenants,id',
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:50',
+            'last_name' => 'required|string|max:50',
+            'dob' => 'nullable|date',
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string|max:20',
-            'employee_id' => 'required|string|max:50|unique:workers,employee_number',
+            'insurance_number' => 'nullable|string|max:50',
+            'employee_number' => 'required|string|max:50|unique:workers,employee_number',
             'hire_date' => 'required|date',
             'hourly_rate' => 'nullable|numeric|min:0',
             'skills' => 'array',
             'skills.*.skill_id' => 'required|exists:skills,id',
             'skills.*.level' => 'required|integer|min:1|max:5',
+            'status' => 'required|in:active,on_leave,inactive',
+            //address
+            'address.address_line_1' => 'required|string|max:255',
+            'address.address_line_2' => 'required|string|max:255',
+            'address.city' => 'required|string|max:100',
+            'address.state' => 'nullable|string|max:100',
+            'address.postal_code' => 'required|string|max:20',
+            'address.country' => 'required|string|max:100',
+            'address.region' => 'nullable|string|max:100',
         ]);
 
         try {
             \DB::beginTransaction();
 
-            // Create user first
-            $userData = [
-                'name' => $validated['name'],
+            // Create Worker first
+            $workerData = [
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'dob' => $validated['dob'],
+                'insurance_number' => $validated['insurance_number'] ?? null,
+                'employee_number' => $validated['employee_number'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'] ?? null,
+                'hire_date' => $validated['hire_date'],
+                'hourly_rate' => $validated['hourly_rate'] ?? null,
+                'status' => $validated['status'],
                 'password' => \Hash::make('password123'), // Default password
                 'tenant_id' => $validated['tenant_id'],
                 'email_verified_at' => now(),
             ];
-
-            $newUser = \App\Models\User::create($userData);
-
-            // Create worker
-            $workerData = [
-                'user_id' => $newUser->id,
-                'employee_number' => $validated['employee_id'],
-                'hire_date' => $validated['hire_date'],
-                'hourly_rate' => $validated['hourly_rate'] ?? null,
-                'status' => 'active',
-                'tenant_id' => $validated['tenant_id'],
-            ];
+           // dd($workerData);
 
             $worker = Worker::create($workerData);
+
+            // Attach address
+            if (!empty($validated['address'])) {
+                $worker->address()->create([
+                    'address_line_1' => $validated['address']['address_line_1'],
+                    'address_line_2' => $validated['address']['address_line_2'] ?? null,
+                    'city' => $validated['address']['city'],
+                    'state' => $validated['address']['state'] ?? null,
+                    'postal_code' => $validated['address']['postal_code'],
+                    'country' => $validated['address']['country'],
+                    'region' => $validated['address']['region'] ?? null,
+                ]);
+            }
 
             // Attach skills with levels
             if (!empty($validated['skills'])) {
@@ -297,11 +318,17 @@ if ($request->filled('search')) {
         $tenants = \App\Models\Tenant::select('id', 'name')
             ->orderBy('name')
             ->get();
-        
+
+        $certifications = \App\Models\Certification::where('is_active', true)
+            ->select('id', 'name', 'authority', 'validity_period_months')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('admin/workers/edit', [
-            'worker' => $worker->load(['skills', 'tenant']),
+            'worker' => $worker->load(['skills', 'address', 'tenant', 'certifications']),
             'skills' => $skills,
             'tenants' => $tenants,
+            'certifications' => $certifications,
         ]);
     }
 
@@ -317,36 +344,68 @@ if ($request->filled('search')) {
             'tenant_id' => 'required|exists:tenants,id',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
+            'dob' => 'nullable|date',
+            'insurance_number' => 'nullable|string|max:50',
             'email' => 'required|email|unique:users,email,' . $worker->user_id,
             'phone' => 'nullable|string|max:20',
-            'employee_id' => 'required|string|max:50|unique:workers,employee_number,' . $worker->id,
+            'employee_number' => 'required|string|max:50|unique:workers,employee_number,' . $worker->id,
             'hire_date' => 'required|date',
             'hourly_rate' => 'nullable|numeric|min:0',
             'status' => 'required|in:active,inactive,on_leave,terminated',
             'skills' => 'array',
             'skills.*.skill_id' => 'required|exists:skills,id',
             'skills.*.level' => 'required|integer|min:1|max:5',
+            // certifications
+            'certifications' => 'array',
+            'certifications.*.certification_id' => 'required|exists:certifications,id',
+            'certifications.*.issued_at' => 'nullable|date',
+            'certifications.*.expires_at' => 'nullable|date|after:issued_at',
+            //address
+            'address.address_line_1' => 'required|string|max:255',
+            'address.address_line_2' => 'nullable|string|max:255',
+            'address.city' => 'required|string|max:100',
+            'address.state' => 'nullable|string|max:100',
+            'address.postal_code' => 'required|string|max:20',
+            'address.country' => 'required|string|max:100',
+            'address.region' => 'nullable|string|max:100',
         ]);
+
+       // dd($request->all(), $validated);
 
         try {
             \DB::beginTransaction();
 
             // Update user - also update tenant if changed
-            $worker->user->update([
-                'name' => $validated['name'],
+            $worker->update([
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'] ?? null,
                 'tenant_id' => $validated['tenant_id'],
-            ]);
-
-            // Update worker
-            $worker->update([
-                'employee_number' => $validated['employee_id'],
+                'employee_number' => $validated['employee_number'],
                 'hire_date' => $validated['hire_date'],
                 'hourly_rate' => $validated['hourly_rate'] ?? null,
                 'status' => $validated['status'],
                 'tenant_id' => $validated['tenant_id'],
             ]);
+
+
+            // Update or create address
+            if (!empty($validated['address'])) {
+                $worker->address()->updateOrCreate(
+                    ['worker_id' => $worker->id],
+                    [
+                        'address_line_1' => $validated['address']['address_line_1'],
+                        'address_line_2' => $validated['address']['address_line_2'] ?? null,
+                        'city' => $validated['address']['city'],
+                        'state' => $validated['address']['state'] ?? null,
+                        'postal_code' => $validated['address']['postal_code'],
+                        'country' => $validated['address']['country'],
+                        'region' => $validated['address']['region'] ?? null,
+                    ]
+                );
+            }
+
 
             // Update skills with levels
             if (!empty($validated['skills'])) {
@@ -359,6 +418,20 @@ if ($request->filled('search')) {
                 $worker->skills()->detach();
             }
 
+            // Update certifications with dates
+            if (!empty($validated['certifications'])) {
+                $certificationsData = [];
+                foreach ($validated['certifications'] as $certification) {
+                    $certificationsData[$certification['certification_id']] = [
+                        'issued_at' => $certification['issued_at'] ?? null,
+                        'expires_at' => $certification['expires_at'] ?? null,
+                    ];
+                }
+                $worker->certifications()->sync($certificationsData);
+            } else {
+                $worker->certifications()->detach();
+            }
+
             \DB::commit();
 
             return redirect()
@@ -369,7 +442,7 @@ if ($request->filled('search')) {
             \DB::rollback();
             
             return back()
-                ->withErrors(['error' => 'Failed to update worker. Please try again.'])
+                ->withErrors(['error' => 'Failed to update worker. Please try again. ' . $e->getMessage()])
                 ->withInput();
         }
     }

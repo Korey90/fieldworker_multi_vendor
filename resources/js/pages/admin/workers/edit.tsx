@@ -22,12 +22,32 @@ import {
 import {Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from "@/components/ui/calendar"
 import { DatePicker } from '@/components/date-picker';
+import { PostalCodeInput } from '@/components/postalCodeInput';
+import { countryRules } from '@/components/postalCodeInput';
 
 // TypeScript interfaces
 interface Skill {
     id: string;
     name: string;
     category?: string;
+}
+
+interface Certification {
+    id: string;
+    name: string;
+    authority: string;
+    validity_period_months: number;
+}
+
+interface WorkerCertification {
+    id: string;
+    name: string;
+    authority: string;
+    validity_period_months: number;
+    pivot: {
+        issued_at: string | null;
+        expires_at: string | null;
+    };
 }
 
 interface WorkerSkill {
@@ -41,7 +61,7 @@ interface WorkerSkill {
 
 interface Worker {
     id: string;
-    tenant_id?: string;
+    tenant_id: string;
     employee_number: string;
     first_name: string;
     last_name: string;
@@ -57,11 +77,24 @@ interface Worker {
     updated_at: string;
     skills: WorkerSkill[];
     tenant: { id: string; name: string; };
+    address: WorkerAddress;
+    certifications: WorkerCertification[];
+}
+
+interface WorkerAddress {
+    address_line_1: string | null;
+    address_line_2: string | null;
+    city: string;
+    state: string;
+    postal_code: string;
+    country: string;
+    region: string; //optional
 }
 
 interface WorkerEditProps {
     worker: Worker;
     skills: Skill[];
+    certifications: Certification[];
 }
 
 interface WorkerFormData {
@@ -79,12 +112,17 @@ interface WorkerFormData {
         skill_id: string;
         level: number;
     }>;
+    address: WorkerAddress;
     data: Record<string, any>;
     tenant_id?: string;
-
+    certifications: Array<{
+        certification_id: string;
+        issued_at: string | null;
+        expires_at: string | null;
+    }>;
 }
 
-export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
+export default function WorkerEdit({ worker, skills, certifications }: WorkerEditProps) {
     const breadcrumbs = [
         { title: 'Dashboard', href: '/admin/dashboard' },
         { title: 'Workers', href: '/admin/workers' },
@@ -109,13 +147,38 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
             skill_id: skill.id,
             level: skill.pivot.level
         })),
+        address: {...worker.address},
+        certifications: worker.certifications.map(cert => ({
+            certification_id: cert.id,
+            issued_at: cert.pivot.issued_at ? cert.pivot.issued_at.split('T')[0] : null,
+            expires_at: cert.pivot.expires_at ? cert.pivot.expires_at.split('T')[0] : null,
+        })),
     });
+
 
     const [selectedSkills, setSelectedSkills] = useState<Array<{ skill_id: string; skill_name: string; level: number }>>(
         worker.skills.map(skill => ({
             skill_id: skill.id,
             skill_name: skill.name,
             level: skill.pivot.level
+        }))
+    );
+
+    const [selectedCertifications, setSelectedCertifications] = useState<Array<{ 
+        certification_id: string; 
+        certification_name: string; 
+        authority: string;
+        validity_period_months: number;
+        issued_at: string | null; 
+        expires_at: string | null; 
+    }>>(
+        worker.certifications.map(cert => ({
+            certification_id: cert.id,
+            certification_name: cert.name,
+            authority: cert.authority,
+            validity_period_months: cert.validity_period_months,
+            issued_at: cert.pivot.issued_at ? cert.pivot.issued_at.split('T')[0] : null,
+            expires_at: cert.pivot.expires_at ? cert.pivot.expires_at.split('T')[0] : null,
         }))
     );
 
@@ -128,7 +191,14 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
             level: skill.level
         })));
 
-        // Submit after a brief delay to ensure skills are updated
+        // Update certifications data before submitting
+        setData('certifications', selectedCertifications.map(cert => ({
+            certification_id: cert.certification_id,
+            issued_at: cert.issued_at,
+            expires_at: cert.expires_at
+        })));
+
+        // Submit after a brief delay to ensure data is updated
         setTimeout(() => {
             put(`/admin/workers/${worker.id}`);
         }, 50);
@@ -199,6 +269,71 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
         }
     };
 
+    // Certification management functions
+    const addCertification = () => {
+        const availableCertifications = certifications.filter(
+            cert => !selectedCertifications.some(selected => selected.certification_id === cert.id)
+        );
+        
+        if (availableCertifications.length > 0) {
+            const cert = availableCertifications[0];
+            setSelectedCertifications([...selectedCertifications, {
+                certification_id: cert.id,
+                certification_name: cert.name,
+                authority: cert.authority,
+                validity_period_months: cert.validity_period_months,
+                issued_at: null,
+                expires_at: null
+            }]);
+        }
+    };
+
+    const removeCertification = (index: number) => {
+        setSelectedCertifications(selectedCertifications.filter((_, i) => i !== index));
+    };
+
+    const updateCertification = (index: number, field: 'certification_id' | 'issued_at' | 'expires_at', value: string) => {
+        const updated = [...selectedCertifications];
+        if (field === 'certification_id') {
+            const cert = certifications.find(c => c.id === value);
+            if (cert) {
+                updated[index] = {
+                    ...updated[index],
+                    certification_id: value,
+                    certification_name: cert.name,
+                    authority: cert.authority,
+                    validity_period_months: cert.validity_period_months,
+                };
+            }
+        } else {
+            updated[index] = {
+                ...updated[index],
+                [field]: value || null
+            };
+        }
+        setSelectedCertifications(updated);
+    };
+
+    const getAvailableCertifications = (currentCertificationId?: string) => {
+        return certifications.filter(cert => 
+            cert.id === currentCertificationId || 
+            !selectedCertifications.some(selected => selected.certification_id === cert.id)
+        );
+    };
+
+    const getCertificationStatus = (expiresAt: string | null) => {
+        if (!expiresAt) return { status: 'unknown', color: 'bg-gray-100 text-gray-800' };
+        
+        const expiry = new Date(expiresAt);
+        const now = new Date();
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(now.getDate() + 30);
+
+        if (expiry < now) return { status: 'expired', color: 'bg-red-100 text-red-800' };
+        if (expiry <= thirtyDaysFromNow) return { status: 'expiring', color: 'bg-yellow-100 text-yellow-800' };
+        return { status: 'valid', color: 'bg-green-100 text-green-800' };
+    };
+
     return (
         <AppLayout
             breadcrumbs={breadcrumbs}
@@ -236,7 +371,7 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
 
                 <form id="worker-edit-form" onSubmit={handleSubmit} className="space-y-6">
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Personal Information */}
                     <div className="lg:col-span-2">
                         <Card>
@@ -460,6 +595,148 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
 
                             </CardContent>
 
+                            <CardHeader>
+                                <CardTitle className="flex items-center">
+                                    <User className="w-5 h-5 mr-2" />
+                                    Address Information
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Address Line 1 */}
+                                    <div>
+                                        <Label htmlFor="address_line_1">Address Line 1</Label>
+                                        <Input
+                                            id="address_line_1"
+                                            type="text"
+                                            value={data.address.address_line_1 || ''}
+                                            onChange={(e) => setData(prev => ({
+                                                ...prev,
+                                                address: { ...prev.address, address_line_1: e.target.value }
+                                            }))}
+                                            placeholder="Enter address line 1"
+                                            className={errors['address.address_line_1'] ? 'border-red-500' : ''}
+                                        />
+                                        {errors['address.address_line_1'] && (
+                                            <p className="text-sm text-red-600 mt-1">{errors['address.address_line_1']}</p>
+                                        )}
+                                    </div>
+                                    {/* Address Line 2 */}
+                                    <div>
+                                        <Label htmlFor="address_line_2">Address Line 2</Label>
+                                        <Input
+                                            id="address_line_2"
+                                            type="text"
+                                            value={data.address.address_line_2 || ''}
+                                            onChange={(e) => setData(prev => ({
+                                                ...prev,
+                                                address: { ...prev.address, address_line_2: e.target.value }
+                                            }))}
+                                            placeholder="Enter address line 2"
+                                            className={errors['address.address_line_2'] ? 'border-red-500' : ''}
+                                        />
+                                        {errors['address.address_line_2'] && (
+                                            <p className="text-sm text-red-600 mt-1">{errors['address.address_line_2']}</p>
+                                        )}
+                                    </div>
+                                    {/* City */}
+                                    <div>
+                                        <Label htmlFor="city">City</Label>
+                                        <Input
+                                            id="city"
+                                            type="text"
+                                            value={data.address.city || ''}
+                                            onChange={(e) => setData(prev => ({
+                                                ...prev,
+                                                address: { ...prev.address, city: e.target.value }
+                                            }))}
+                                            placeholder="Enter city"
+                                            className={errors['address.city'] ? 'border-red-500' : ''}
+                                        />
+                                        {errors['address.city'] && (
+                                            <p className="text-sm text-red-600 mt-1">{errors['address.city']}</p>
+                                        )}
+                                    </div>
+                                    {/* State/Province */}
+                                    <div>
+                                        <Label htmlFor="state">State/Province</Label>
+                                        <Input
+                                            id="state"
+                                            type="text"
+                                            value={data.address.state || ''}
+                                            onChange={(e) => setData(prev => ({
+                                                ...prev,
+                                                address: { ...prev.address, state: e.target.value }
+                                            }))}
+                                            placeholder="Enter state or province"
+                                            className={errors['address.state'] ? 'border-red-500' : ''}
+                                        />
+                                        {errors['address.state'] && (
+                                            <p className="text-sm text-red-600 mt-1">{errors['address.state']}</p>
+                                        )}
+                                    </div>
+                                    {/* Postal Code */}
+                                    <div>
+                                      <PostalCodeInput
+                                        value={data.address.postal_code || ''}
+                                        onChange={(val) => setData(prev => ({
+                                            ...prev,
+                                            address: { ...prev.address, postal_code: val }
+                                        }))}
+                                        country={data.address.country || ''}
+                                        onCountryChange={(val) => setData(prev => ({
+                                            ...prev,
+                                            address: { ...prev.address, country: val }
+                                        }))}
+                                      />
+                                    </div>
+
+                                    {/* Country */}
+                                    <div>
+                                      <Label htmlFor="country">Country</Label>
+                                      <Select
+                                        value={data.address.country || ''}
+                                        onValueChange={(val: string) => setData(prev => ({
+                                            ...prev,
+                                            address: { ...prev.address, country: val }
+                                        }))}
+                                      >
+                                        <SelectTrigger className={errors['address.country'] ? "border-red-500" : ""}>
+                                          <SelectValue placeholder="Select country" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {countryRules.map((c) => (
+                                            <SelectItem key={c.code} value={c.code}>
+                                              {c.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    {/* Region */}
+                                    <div>
+                                        <Label htmlFor="region">Region</Label>
+                                        <Input
+                                            id="region"
+                                            type="text"
+                                            value={data.address.region || ''}
+                                            onChange={(e) => setData(prev => ({
+                                                ...prev,
+                                                address: { ...prev.address, region: e.target.value }
+                                            }))}
+                                            placeholder="Enter region"
+                                            className={errors['address.region'] ? 'border-red-500' : ''}
+                                        />
+                                        {errors['address.region'] && (
+                                            <p className="text-sm text-red-600 mt-1">{errors['address.region']}</p>
+                                        )}
+                                    </div>
+
+                                </div>
+
+                            </CardContent>  
+
                             {/* JSON Data Section */}
                             <CardHeader>    
                                 <CardTitle className="flex items-center">
@@ -477,6 +754,7 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
                     </div>
 
                     {/* Skills Section */}
+                    <div className="lg:col-span-2">
                     <Card>
                         <CardHeader>
                             <div className="flex items-center justify-between">
@@ -571,7 +849,148 @@ export default function WorkerEdit({ worker, skills }: WorkerEditProps) {
                                 <p className="text-sm text-red-600">{errors.skills}</p>
                             )}
                         </CardContent>
+
+
+                        <CardHeader>    
+                            <CardTitle className="flex items-center">
+                                <Award className="w-5 h-5 mr-2" />
+                                Certificates
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="text-sm text-gray-600">
+                                    Manage worker certifications, licenses and safety training
+                                </p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={addCertification}
+                                    disabled={selectedCertifications.length >= certifications.length}
+                                >
+                                    <Plus className="w-4 h-4 mr-1" />
+                                    Add Certificate
+                                </Button>
+                            </div>
+
+                            {selectedCertifications.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                                    <Award className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                                    <p className="font-medium">No certificates added</p>
+                                    <p className="text-sm">Click "Add Certificate" to start managing certifications</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {selectedCertifications.map((selectedCert, index) => {
+                                        const statusInfo = getCertificationStatus(selectedCert.expires_at);
+                                        return (
+                                            <div key={index} className="border rounded-lg p-4 space-y-3 bg-gray-50">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Label className="text-sm font-medium">Certificate {index + 1}</Label>
+                                                        <Badge className={statusInfo.color}>
+                                                            {statusInfo.status}
+                                                        </Badge>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => removeCertification(index)}
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    <div>
+                                                        <Label className="text-xs text-gray-500">Certification Type</Label>
+                                                        <Select 
+                                                            value={selectedCert.certification_id} 
+                                                            onValueChange={(value) => updateCertification(index, 'certification_id', value)}
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select certification" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {getAvailableCertifications(selectedCert.certification_id).map((cert) => (
+                                                                    <SelectItem key={cert.id} value={cert.id}>
+                                                                        <div className="flex flex-col">
+                                                                            <span className="font-medium">{cert.name}</span>
+                                                                            <span className="text-xs text-muted-foreground">{cert.authority}</span>
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    <div className="text-sm">
+                                                        <Label className="text-xs text-gray-500">Authority</Label>
+                                                        <p className="text-sm font-medium mt-1">{selectedCert.authority}</p>
+                                                        <p className="text-xs text-gray-500">
+                                                            Valid for {selectedCert.validity_period_months} months
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    <div>
+                                                        <Label className="text-xs text-gray-500">Issue Date</Label>
+                                                        <DatePicker
+                                                            value={selectedCert.issued_at || undefined}
+                                                            onChange={(val) => updateCertification(index, 'issued_at', val || '')}
+                                                            placeholder="Select issue date"
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <Label className="text-xs text-gray-500">Expiry Date</Label>
+                                                        <DatePicker
+                                                            value={selectedCert.expires_at || undefined}
+                                                            onChange={(val) => updateCertification(index, 'expires_at', val || '')}
+                                                            placeholder="Select expiry date"
+                                                        />
+                                                        {selectedCert.issued_at && selectedCert.validity_period_months && (
+                                                            <p className="text-xs text-blue-600 mt-1">
+                                                                Auto-expires: {new Date(new Date(selectedCert.issued_at).setMonth(
+                                                                    new Date(selectedCert.issued_at).getMonth() + selectedCert.validity_period_months
+                                                                )).toLocaleDateString()}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {selectedCert.expires_at && (
+                                                    <div className="pt-2 border-t border-gray-200">
+                                                        <div className="flex items-center justify-between text-sm">
+                                                            <span className="text-gray-600">Status:</span>
+                                                            <div className="flex items-center space-x-2">
+                                                                <Badge className={statusInfo.color}>
+                                                                    {statusInfo.status.charAt(0).toUpperCase() + statusInfo.status.slice(1)}
+                                                                </Badge>
+                                                                {statusInfo.status === 'expiring' && (
+                                                                    <span className="text-xs text-yellow-600">
+                                                                        Expires in {Math.ceil((new Date(selectedCert.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            {errors.certifications && (
+                                <p className="text-sm text-red-600">{errors.certifications}</p>
+                            )}
+                        </CardContent>                    
                     </Card>
+                    </div>
                 </div>
             </form>
             </div>

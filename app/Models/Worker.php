@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -24,6 +25,8 @@ class Worker extends Model
         'first_name',
         'last_name',
         'dob',
+        'phone',
+        'email',
         'insurance_number', // wrażliwe → szyfrowane
         'hire_date',
         'hourly_rate',
@@ -48,6 +51,12 @@ class Worker extends Model
     }
 
     // 🔹 Relacje
+    public function address(): HasOne
+    {
+        return $this->hasOne(WorkerAddress::class);
+    }
+
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);

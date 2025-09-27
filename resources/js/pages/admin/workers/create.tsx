@@ -41,13 +41,13 @@ interface WorkerCreateProps {
 }
 
 interface WorkerAddress {
-    address_line_1: string;
-    address_line_2?: string;
+    address_line_1: string | null;
+    address_line_2: string | null;
     city: string;
-    state?: string;
+    state: string;
     postal_code: string;
-    country?: string;
-    region?: string; //optional
+    country: string;
+    region: string; //optional
 }
 
 interface WorkerFormData {
@@ -447,7 +447,10 @@ export default function WorkerCreate({ skills, tenants }: WorkerCreateProps) {
                                             id="address_line_1"
                                             type="text"
                                             value={data.address.address_line_1 || ''}
-                                            onChange={(e) => setData('address', { ...data.address, address_line_1: e.target.value })}
+                                            onChange={(e) => setData(prev => ({
+                                                ...prev,
+                                                address: { ...prev.address, address_line_1: e.target.value }
+                                            }))}
                                             placeholder="Enter address line 1"
                                             className={errors['address.address_line_1'] ? 'border-red-500' : ''}
                                         />
@@ -462,7 +465,10 @@ export default function WorkerCreate({ skills, tenants }: WorkerCreateProps) {
                                             id="address_line_2"
                                             type="text"
                                             value={data.address.address_line_2 || ''}
-                                            onChange={(e) => setData('address', { ...data.address, address_line_2: e.target.value })}
+                                            onChange={(e) => setData(prev => ({
+                                                ...prev,
+                                                address: { ...prev.address, address_line_2: e.target.value }
+                                            }))}
                                             placeholder="Enter address line 2"
                                             className={errors['address.address_line_2'] ? 'border-red-500' : ''}
                                         />
@@ -521,7 +527,7 @@ export default function WorkerCreate({ skills, tenants }: WorkerCreateProps) {
                                       <Label htmlFor="country">Country</Label>
                                       <Select
                                         value={data.address.country || ''}
-                                        onValueChange={(val) => setData('address', { ...data.address, country: val })}
+                                        onValueChange={(val: string) => setData('address', { ...data.address, country: val })}
                                       >
                                         <SelectTrigger className={errors['address.country'] ? "border-red-500" : ""}>
                                           <SelectValue placeholder="Select country" />
