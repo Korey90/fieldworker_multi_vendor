@@ -35,17 +35,9 @@ interface Tenant {
     name: string;
 }
 
-interface Certification {
-    id: string;
-    name: string;
-    authority: string;
-    validity_period_months: number;
-}
-
 interface WorkerCreateProps {
     skills: Skill[];
     tenants: Tenant[];
-    certifications: Certification[];
 }
 
 interface WorkerAddress {
@@ -76,14 +68,9 @@ interface WorkerFormData {
     address: WorkerAddress;
     data: Record<string, any>;
     tenant_id: string;
-    certifications: Array<{
-        certification_id: string;
-        issued_at: string | null;
-        expires_at: string | null;
-    }>;
 }
 
-export default function WorkerCreate({ skills, tenants, certifications }: WorkerCreateProps) {
+export default function WorkerCreate({ skills, tenants }: WorkerCreateProps) {
     const breadcrumbs = [
         { title: 'Dashboard', href: '/admin/dashboard' },
         { title: 'Workers', href: '/admin/workers' },
@@ -104,7 +91,6 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
         status: 'active',
         data: {},
         skills: [],
-        certifications: [],
         address: {
             address_line_1: '',
             address_line_2: '',
@@ -118,15 +104,6 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
 
     const [selectedSkills, setSelectedSkills] = useState<Array<{ skill_id: string; skill_name: string; level: number }>>([]);
 
-    const [selectedCertifications, setSelectedCertifications] = useState<Array<{ 
-        certification_id: string; 
-        certification_name: string; 
-        authority: string;
-        validity_period_months: number;
-        issued_at: string | null; 
-        expires_at: string | null; 
-    }>>([]);
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -136,17 +113,10 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
             level: skill.level
         })));
 
-        // Update certifications data before submitting
-        setData('certifications', selectedCertifications.map(cert => ({
-            certification_id: cert.certification_id,
-            issued_at: cert.issued_at,
-            expires_at: cert.expires_at
-        })));
-
-        // Submit after a brief delay to ensure data is updated
+        // Submit after a brief delay to ensure skills are updated
         setTimeout(() => {
             post('/admin/workers');
-        }, 100);
+        }, 50);
     };
 
     const addSkill = () => {
@@ -212,86 +182,6 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
             case 5: return 'Expert';
             default: return 'Unknown';
         }
-    };
-
-    // Certification management functions
-    const addCertification = () => {
-        const availableCertifications = certifications.filter(
-            cert => !selectedCertifications.some(selected => selected.certification_id === cert.id)
-        );
-        
-        if (availableCertifications.length > 0) {
-            const cert = availableCertifications[0];
-            setSelectedCertifications([...selectedCertifications, {
-                certification_id: cert.id,
-                certification_name: cert.name,
-                authority: cert.authority,
-                validity_period_months: cert.validity_period_months,
-                issued_at: null,
-                expires_at: null
-            }]);
-        }
-    };
-
-    const removeCertification = (index: number) => {
-        setSelectedCertifications(selectedCertifications.filter((_, i) => i !== index));
-    };
-
-    const updateCertification = (index: number, field: 'certification_id' | 'issued_at' | 'expires_at', value: string) => {
-        const updated = [...selectedCertifications];
-        if (field === 'certification_id') {
-            const cert = certifications.find(c => c.id === value);
-            if (cert) {
-                updated[index] = {
-                    ...updated[index],
-                    certification_id: value,
-                    certification_name: cert.name,
-                    authority: cert.authority,
-                    validity_period_months: cert.validity_period_months,
-                };
-            }
-        } else if (field === 'issued_at') {
-            updated[index] = {
-                ...updated[index],
-                [field]: value || null
-            };
-            
-            // Auto-calculate expires_at when issued_at changes
-            if (value && updated[index].validity_period_months) {
-                const issuedDate = new Date(value);
-                const expiryDate = new Date(issuedDate);
-                expiryDate.setMonth(expiryDate.getMonth() + updated[index].validity_period_months);
-                updated[index].expires_at = expiryDate.toISOString().split('T')[0];
-            } else {
-                updated[index].expires_at = null;
-            }
-        } else {
-            updated[index] = {
-                ...updated[index],
-                [field]: value || null
-            };
-        }
-        setSelectedCertifications(updated);
-    };
-
-    const getAvailableCertifications = (currentCertificationId?: string) => {
-        return certifications.filter(cert => 
-            cert.id === currentCertificationId || 
-            !selectedCertifications.some(selected => selected.certification_id === cert.id)
-        );
-    };
-
-    const getCertificationStatus = (expiresAt: string | null) => {
-        if (!expiresAt) return { status: 'unknown', color: 'bg-gray-100 text-gray-800' };
-        
-        const expiry = new Date(expiresAt);
-        const now = new Date();
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(now.getDate() + 30);
-
-        if (expiry < now) return { status: 'expired', color: 'bg-red-100 text-red-800' };
-        if (expiry <= thirtyDaysFromNow) return { status: 'expiring', color: 'bg-yellow-100 text-yellow-800' };
-        return { status: 'valid', color: 'bg-green-100 text-green-800' };
     };
 
     return (
@@ -593,10 +483,7 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
                                             id="city"
                                             type="text"
                                             value={data.address.city || ''}
-                                            onChange={(e) => setData(prev => ({
-                                                ...prev,
-                                                address: { ...prev.address, city: e.target.value }
-                                            }))}
+                                            onChange={(e) => setData('address', { ...data.address, city: e.target.value })}
                                             placeholder="Enter city"
                                             className={errors['address.city'] ? 'border-red-500' : ''}
                                         />
@@ -611,10 +498,7 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
                                             id="state"
                                             type="text"
                                             value={data.address.state || ''}
-                                            onChange={(e) => setData(prev => ({
-                                                ...prev,
-                                                address: { ...prev.address, state: e.target.value }
-                                            }))}
+                                            onChange={(e) => setData('address', { ...data.address, state: e.target.value })}
                                             placeholder="Enter state or province"
                                             className={errors['address.state'] ? 'border-red-500' : ''}
                                         />
@@ -643,10 +527,7 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
                                       <Label htmlFor="country">Country</Label>
                                       <Select
                                         value={data.address.country || ''}
-                                        onValueChange={(val: string) => setData(prev => ({
-                                            ...prev,
-                                            address: { ...prev.address, country: val }
-                                        }))}
+                                        onValueChange={(val: string) => setData('address', { ...data.address, country: val })}
                                       >
                                         <SelectTrigger className={errors['address.country'] ? "border-red-500" : ""}>
                                           <SelectValue placeholder="Select country" />
@@ -668,10 +549,7 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
                                             id="region"
                                             type="text"
                                             value={data.address.region || ''}
-                                            onChange={(e) => setData(prev => ({
-                                                ...prev,
-                                                address: { ...prev.address, region: e.target.value }
-                                            }))}
+                                            onChange={(e) => setData('address', { ...data.address, region: e.target.value })}
                                             placeholder="Enter region"
                                             className={errors['address.region'] ? 'border-red-500' : ''}
                                         />
@@ -683,9 +561,6 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
                                 </div>
 
                             </CardContent>    
-
-
-
                         </Card>
                     </div>
 
@@ -784,165 +659,6 @@ export default function WorkerCreate({ skills, tenants, certifications }: Worker
                                 <p className="text-sm text-red-600">{errors.skills}</p>
                             )}
                         </CardContent>
-
-
-                        <CardHeader>    
-                            <CardTitle className="flex items-center">
-                                <Award className="w-5 h-5 mr-2" />
-                                Certificates
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between mb-4">
-                                <p className="text-sm text-gray-600">
-                                    Manage worker certifications, licenses and safety training
-                                </p>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addCertification}
-                                    disabled={selectedCertifications.length >= certifications.length}
-                                >
-                                    <Plus className="w-4 h-4 mr-1" />
-                                    Add Certificate
-                                </Button>
-                            </div>
-
-                            {selectedCertifications.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                                    <Award className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                                    <p className="font-medium">No certificates added</p>
-                                    <p className="text-sm">Click "Add Certificate" to start managing certifications</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {selectedCertifications.map((selectedCert, index) => {
-                                        const statusInfo = getCertificationStatus(selectedCert.expires_at);
-                                        return (
-                                            <div key={index} className="border rounded-lg p-4 space-y-3 bg-gray-50">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center space-x-2">
-                                                        <Label className="text-sm font-medium">Certificate {index + 1}</Label>
-                                                        <Badge className={statusInfo.color}>
-                                                            {statusInfo.status}
-                                                        </Badge>
-                                                    </div>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => removeCertification(index)}
-                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    >
-                                                        <X className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                                
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    <div>
-                                                        <Label className="text-xs text-gray-500">Certification Type</Label>
-                                                        <Select 
-                                                            value={selectedCert.certification_id} 
-                                                            onValueChange={(value) => updateCertification(index, 'certification_id', value)}
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select certification" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {getAvailableCertifications(selectedCert.certification_id).map((cert) => (
-                                                                    <SelectItem key={cert.id} value={cert.id}>
-                                                                        <div className="flex flex-col">
-                                                                            <span className="font-medium">{cert.name}</span>
-                                                                            <span className="text-xs text-muted-foreground">{cert.authority}</span>
-                                                                        </div>
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-
-                                                    <div className="text-sm">
-                                                        <Label className="text-xs text-gray-500">Authority</Label>
-                                                        <p className="text-sm font-medium mt-1">{selectedCert.authority}</p>
-                                                        <p className="text-xs text-gray-500">
-                                                            Valid for {selectedCert.validity_period_months} months
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                  {/* Issue Date */}
-                                                  <div>
-                                                    <Label className="text-xs text-gray-500">Issue Date</Label>
-                                                    <DatePicker
-                                                      value={selectedCert.issued_at || undefined}
-                                                      onChange={(val) => updateCertification(index, 'issued_at', val || '')}
-                                                      placeholder="Select issue date"
-                                                    />
-                                                  </div>
-                                                                                                            
-                                                  {/* Expiry Date (read-only) */}
-                                                  <div>
-                                                    <Label className="text-xs text-gray-500">Expiry Date</Label>
-                                                    <input
-                                                      type="text"
-                                                      className="w-full rounded-md border border-gray-300 bg-gray-100 px-2 py-2 text-sm text-gray-700"
-                                                      value={
-                                                        selectedCert.expires_at
-                                                          ? new Date(selectedCert.expires_at).toLocaleDateString()
-                                                          : ''
-                                                      }
-                                                      readOnly
-                                                      placeholder="Auto-calculated expiry date"
-                                                    />
-                                                
-                                                    {selectedCert.expires_at && (
-                                                      <p className="text-xs text-blue-600 mt-1">
-                                                        Auto-expires: {new Date(selectedCert.expires_at).toLocaleDateString()}
-                                                      </p>
-                                                    )}
-                                                  </div>
-                                                </div>
-                                                
-                                                {selectedCert.expires_at && (
-                                                  <div className="pt-2 border-t border-gray-200">
-                                                    <div className="flex items-center justify-between text-sm">
-                                                      <span className="text-gray-600">Status:</span>
-                                                      <div className="flex items-center space-x-2">
-                                                        <Badge className={statusInfo.color}>
-                                                          {statusInfo.status.charAt(0).toUpperCase() +
-                                                            statusInfo.status.slice(1)}
-                                                        </Badge>
-                                                        {statusInfo.status === 'expiring' && (
-                                                          <span className="text-xs text-yellow-600">
-                                                            Expires in{' '}
-                                                            {Math.ceil(
-                                                              (new Date(selectedCert.expires_at).getTime() -
-                                                                new Date().getTime()) /
-                                                                (1000 * 60 * 60 * 24)
-                                                            )}{' '}
-                                                            days
-                                                          </span>
-                                                        )}
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                )}
-
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                            {errors.certifications && (
-                                <p className="text-sm text-red-600">{errors.certifications}</p>
-                            )}
-                        </CardContent>    
-
-
-
-
                     </Card>
                 </div>
             </form>

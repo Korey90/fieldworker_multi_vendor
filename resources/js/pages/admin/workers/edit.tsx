@@ -148,7 +148,7 @@ export default function WorkerEdit({ worker, skills, certifications }: WorkerEdi
             level: skill.pivot.level
         })),
         address: {...worker.address},
-        certifications: worker.certifications.map(cert => ({
+        certifications: (worker.certifications || []).map(cert => ({
             certification_id: cert.id,
             issued_at: cert.pivot.issued_at ? cert.pivot.issued_at.split('T')[0] : null,
             expires_at: cert.pivot.expires_at ? cert.pivot.expires_at.split('T')[0] : null,
@@ -172,7 +172,7 @@ export default function WorkerEdit({ worker, skills, certifications }: WorkerEdi
         issued_at: string | null; 
         expires_at: string | null; 
     }>>(
-        worker.certifications.map(cert => ({
+        (worker.certifications || []).map(cert => ({
             certification_id: cert.id,
             certification_name: cert.name,
             authority: cert.authority,
@@ -182,26 +182,30 @@ export default function WorkerEdit({ worker, skills, certifications }: WorkerEdi
         }))
     );
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        // Update skills data before submitting
+    // Sync selectedSkills with form data
+    useEffect(() => {
         setData('skills', selectedSkills.map(skill => ({
             skill_id: skill.skill_id,
             level: skill.level
         })));
+    }, [selectedSkills, setData]);
 
-        // Update certifications data before submitting
+    // Sync selectedCertifications with form data
+    useEffect(() => {
         setData('certifications', selectedCertifications.map(cert => ({
             certification_id: cert.certification_id,
             issued_at: cert.issued_at,
             expires_at: cert.expires_at
         })));
+    }, [selectedCertifications, setData]);
 
-        // Submit after a brief delay to ensure data is updated
-        setTimeout(() => {
-            put(`/admin/workers/${worker.id}`);
-        }, 50);
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        console.log('Current form data skills:', data.skills);
+        console.log('Current form data certifications:', data.certifications);
+
+        put(`/admin/workers/${worker.id}`);
     };
 
     const addSkill = () => {
@@ -304,6 +308,21 @@ export default function WorkerEdit({ worker, skills, certifications }: WorkerEdi
                     authority: cert.authority,
                     validity_period_months: cert.validity_period_months,
                 };
+            }
+        } else if (field === 'issued_at') {
+            updated[index] = {
+                ...updated[index],
+                [field]: value || null
+            };
+            
+            // Auto-calculate expires_at when issued_at changes
+            if (value && updated[index].validity_period_months) {
+                const issuedDate = new Date(value);
+                const expiryDate = new Date(issuedDate);
+                expiryDate.setMonth(expiryDate.getMonth() + updated[index].validity_period_months);
+                updated[index].expires_at = expiryDate.toISOString().split('T')[0];
+            } else {
+                updated[index].expires_at = null;
             }
         } else {
             updated[index] = {
@@ -937,49 +956,64 @@ export default function WorkerEdit({ worker, skills, certifications }: WorkerEdi
                                                 </div>
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    <div>
-                                                        <Label className="text-xs text-gray-500">Issue Date</Label>
-                                                        <DatePicker
-                                                            value={selectedCert.issued_at || undefined}
-                                                            onChange={(val) => updateCertification(index, 'issued_at', val || '')}
-                                                            placeholder="Select issue date"
-                                                        />
-                                                    </div>
-
-                                                    <div>
-                                                        <Label className="text-xs text-gray-500">Expiry Date</Label>
-                                                        <DatePicker
-                                                            value={selectedCert.expires_at || undefined}
-                                                            onChange={(val) => updateCertification(index, 'expires_at', val || '')}
-                                                            placeholder="Select expiry date"
-                                                        />
-                                                        {selectedCert.issued_at && selectedCert.validity_period_months && (
-                                                            <p className="text-xs text-blue-600 mt-1">
-                                                                Auto-expires: {new Date(new Date(selectedCert.issued_at).setMonth(
-                                                                    new Date(selectedCert.issued_at).getMonth() + selectedCert.validity_period_months
-                                                                )).toLocaleDateString()}
-                                                            </p>
-                                                        )}
-                                                    </div>
+                                                  {/* Issue Date */}
+                                                  <div>
+                                                    <Label className="text-xs text-gray-500">Issue Date</Label>
+                                                    <DatePicker
+                                                      value={selectedCert.issued_at || undefined}
+                                                      onChange={(val) => updateCertification(index, 'issued_at', val || '')}
+                                                      placeholder="Select issue date"
+                                                    />
+                                                  </div>
+                                                                                                            
+                                                  {/* Expiry Date (read-only) */}
+                                                  <div>
+                                                    <Label className="text-xs text-gray-500">Expiry Date</Label>
+                                                    <input
+                                                      type="text"
+                                                      className="w-full rounded-md border border-gray-300 bg-gray-100 px-2 py-2 text-sm text-gray-700"
+                                                      value={
+                                                        selectedCert.expires_at
+                                                          ? new Date(selectedCert.expires_at).toLocaleDateString()
+                                                          : ''
+                                                      }
+                                                      readOnly
+                                                      placeholder="Auto-calculated expiry date"
+                                                    />
+                                                
+                                                    {selectedCert.expires_at && (
+                                                      <p className="text-xs text-blue-600 mt-1">
+                                                        Auto-expires: {new Date(selectedCert.expires_at).toLocaleDateString()}
+                                                      </p>
+                                                    )}
+                                                  </div>
                                                 </div>
-
+                                                
                                                 {selectedCert.expires_at && (
-                                                    <div className="pt-2 border-t border-gray-200">
-                                                        <div className="flex items-center justify-between text-sm">
-                                                            <span className="text-gray-600">Status:</span>
-                                                            <div className="flex items-center space-x-2">
-                                                                <Badge className={statusInfo.color}>
-                                                                    {statusInfo.status.charAt(0).toUpperCase() + statusInfo.status.slice(1)}
-                                                                </Badge>
-                                                                {statusInfo.status === 'expiring' && (
-                                                                    <span className="text-xs text-yellow-600">
-                                                                        Expires in {Math.ceil((new Date(selectedCert.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
+                                                  <div className="pt-2 border-t border-gray-200">
+                                                    <div className="flex items-center justify-between text-sm">
+                                                      <span className="text-gray-600">Status:</span>
+                                                      <div className="flex items-center space-x-2">
+                                                        <Badge className={statusInfo.color}>
+                                                          {statusInfo.status.charAt(0).toUpperCase() +
+                                                            statusInfo.status.slice(1)}
+                                                        </Badge>
+                                                        {statusInfo.status === 'expiring' && (
+                                                          <span className="text-xs text-yellow-600">
+                                                            Expires in{' '}
+                                                            {Math.ceil(
+                                                              (new Date(selectedCert.expires_at).getTime() -
+                                                                new Date().getTime()) /
+                                                                (1000 * 60 * 60 * 24)
+                                                            )}{' '}
+                                                            days
+                                                          </span>
+                                                        )}
+                                                      </div>
                                                     </div>
+                                                  </div>
                                                 )}
+
                                             </div>
                                         );
                                     })}

@@ -114,7 +114,8 @@ public function index(Request $request): Response
                 ] : null,
                 'last_activity' => $worker->updated_at->diffForHumans(),
             ];
-        });
+    });
+
 
     return Inertia::render('admin/workers/index', [
         'workers' => $workers,
@@ -149,9 +150,15 @@ public function index(Request $request): Response
             ->orderBy('name')
             ->get();
 
+        $certifications = \App\Models\Certification::where('is_active', true)
+            ->select('id', 'name', 'authority', 'validity_period_months')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('admin/workers/create', [
             'skills' => $skills,
             'tenants' => $tenants,
+            'certifications' => $certifications,
         ]);
     }
 
@@ -166,15 +173,20 @@ public function index(Request $request): Response
             'first_name' => 'required|string|max:50',
             'last_name' => 'required|string|max:50',
             'dob' => 'nullable|date',
-            'email' => 'required|email|unique:users,email',
+            'email' => 'required|email|unique:workers,email',
             'phone' => 'nullable|string|max:20',
-            'insurance_number' => 'nullable|string|max:50',
+            'insurance_number' => 'nullable|string|max:50|unique:workers,insurance_number',
             'employee_number' => 'required|string|max:50|unique:workers,employee_number',
             'hire_date' => 'required|date',
             'hourly_rate' => 'nullable|numeric|min:0',
             'skills' => 'array',
             'skills.*.skill_id' => 'required|exists:skills,id',
             'skills.*.level' => 'required|integer|min:1|max:5',
+            // certifications
+            'certifications' => 'array',
+            'certifications.*.certification_id' => 'required|exists:certifications,id',
+            'certifications.*.issued_at' => 'nullable|date',
+            'certifications.*.expires_at' => 'nullable|date|after:issued_at',
             'status' => 'required|in:active,on_leave,inactive',
             //address
             'address.address_line_1' => 'required|string|max:255',
@@ -229,6 +241,18 @@ public function index(Request $request): Response
                     $skillsData[$skill['skill_id']] = ['level' => $skill['level']];
                 }
                 $worker->skills()->attach($skillsData);
+            }
+
+            // Attach certifications with dates
+            if (!empty($validated['certifications'])) {
+                $certificationsData = [];
+                foreach ($validated['certifications'] as $certification) {
+                    $certificationsData[$certification['certification_id']] = [
+                        'issued_at' => $certification['issued_at'] ?? null,
+                        'expires_at' => $certification['expires_at'] ?? null,
+                    ];
+                }
+                $worker->certifications()->attach($certificationsData);
             }
 
             \DB::commit();
@@ -309,8 +333,8 @@ public function index(Request $request): Response
     public function edit(Worker $worker): Response
     {
         $this->authorize('update', $worker);
-        
-        // Get skills and tenants for the form - Admin can change tenant
+
+        // Get skills, tenants and certifications for the form - Admin can change tenant
         $skills = \App\Models\Skill::where('is_active', true)
             ->select('id', 'name', 'category')
             ->get();
@@ -370,7 +394,8 @@ public function index(Request $request): Response
             'address.region' => 'nullable|string|max:100',
         ]);
 
-       // dd($request->all(), $validated);
+        // Debug: uncomment to see request data
+        // dd($request->all(), $validated);
 
         try {
             \DB::beginTransaction();
@@ -405,7 +430,6 @@ public function index(Request $request): Response
                     ]
                 );
             }
-
 
             // Update skills with levels
             if (!empty($validated['skills'])) {
