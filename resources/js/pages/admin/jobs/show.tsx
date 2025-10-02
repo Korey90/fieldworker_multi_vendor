@@ -20,17 +20,26 @@ import {
     Activity,
     Plus,
     Mail,
-    Phone
+    Phone,
+    Eye
 } from 'lucide-react';
-import { type BreadcrumbItem, type Job, type User as UserType } from '@/types';
+import { type BreadcrumbItem, type Job, type Worker, type Form, type User as UserType } from '@/types';
 
 interface JobShowProps {
     job: Job;
-    availableWorkers: UserType[];
+    workers: Worker[];
+    forms: Form[];
 }
 
-export default function JobShow({ job, availableWorkers }: JobShowProps) {
+interface Location {
+    id: number;
+    name: string;
+}
+
+export default function JobShow({ job, workers, forms }: JobShowProps) {
     const [activeTab, setActiveTab] = useState('overview');
+
+    console.log('Job:', job, 'Workers:', workers);
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/admin/dashboard' },
@@ -183,7 +192,7 @@ export default function JobShow({ job, availableWorkers }: JobShowProps) {
                         </TabsTrigger>
                         <TabsTrigger value="documents" onClick={() => setActiveTab('documents')}>
                             <FileText className="h-4 w-4 mr-2" />
-                            Documents ({job.formResponses?.length || 0})
+                            Documents ({forms?.length || 0})
                         </TabsTrigger>
                         <TabsTrigger value="timeline" onClick={() => setActiveTab('timeline')}>
                             <Activity className="h-4 w-4 mr-2" />
@@ -202,6 +211,10 @@ export default function JobShow({ job, availableWorkers }: JobShowProps) {
                                     <CardTitle>Job Information</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-medium">Tenant</label>
+                                        <p className="text-sm text-muted-foreground font-mono">{job.tenant?.name}</p>
+                                    </div>
                                     <div>
                                         <label className="text-sm font-medium">Title</label>
                                         <p className="text-sm text-muted-foreground">{job.title}</p>
@@ -274,16 +287,16 @@ export default function JobShow({ job, availableWorkers }: JobShowProps) {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium">
-                                                        {assignment.worker?.user?.name || 'Unknown'}
+                                                        {assignment.worker ? `${assignment.worker.first_name} ${assignment.worker.last_name}` : 'Unknown Worker'}
                                                     </p>
                                                     <p className="text-sm text-muted-foreground">
                                                         {assignment.role}
                                                     </p>
                                                     <div className="mt-2 flex items-center space-x-4 text-xs text-muted-foreground">
-                                                        {assignment.worker?.user?.email && (
+                                                        {assignment.worker?.email && (
                                                             <div className="flex items-center space-x-1">
                                                                 <Mail className="h-3 w-3" />
-                                                                <span>{assignment.worker.user.email}</span>
+                                                                <span>{assignment.worker.email}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -326,23 +339,48 @@ export default function JobShow({ job, availableWorkers }: JobShowProps) {
                             </Button>
                         </div>
 
-                        {job.formResponses && job.formResponses.length > 0 ? (
+                        {forms && forms.length > 0 ? (
                             <div className="space-y-4">
-                                {job.formResponses.map((response) => (
-                                    <Card key={response.id}>
+                                {forms.map((form) => (
+                                    <Card key={form.id}>
                                         <CardContent className="p-4">
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <h4 className="font-medium">
-                                                        {response.form?.name || 'Unnamed Form'}
+                                                        {form.name || 'Unnamed Form'}
                                                     </h4>
                                                     <p className="text-sm text-muted-foreground">
-                                                        Submitted: {formatDate(response.submitted_at)}
+                                                        Type: {form.type}
                                                     </p>
                                                 </div>
-                                                <Button variant="outline" size="sm">
-                                                    View Response
-                                                </Button>
+                                                {form.responses && form.responses.length > 0 ? (
+                                                    <Button variant="outline" size="sm">
+                                                        {form.responses.length} {form.responses.length === 1 ? "response" : "responses"}
+                                                    </Button>
+                                                ) : (
+                                                    <Button variant="outline" size="sm">
+                                                        No responses
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div>
+                                                {form.responses && form.responses.length > 0 ? (
+
+                                                    form.responses.map((response: any) => (
+                                                        <div key={response.id} className="mt-2">
+                                                            <p className="text-sm text-muted-foreground">
+                                                                Submitted {response.is_submitted && response.submitted_at ?  'at ' + formatDate(response.submitted_at) : 'as draft'} by: {response.worker ? `${response.worker.first_name} ${response.worker.last_name}` : 'Unknown'}
+
+                                                                <Link
+                                                                    href={route('admin.form-responses.show', response.id)}
+                                                                    className="text-blue-500 hover:underline ml-2"
+                                                                >
+                                                                    <Eye className="h-4 w-4 inline" />
+                                                                </Link>
+                                                            </p>
+                                                        </div>
+                                                    ))
+                                                ) : null}
                                             </div>
                                         </CardContent>
                                     </Card>

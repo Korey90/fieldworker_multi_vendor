@@ -110,10 +110,10 @@ class FormController extends Controller
      */
     public function show(Form $form): Response
     {
-        $form->load(['tenant', 'responses.user', 'responses.job']);
+        $form->load(['tenant', 'responses.worker', 'responses.job']);
         
         $recentResponses = $form->responses()
-            ->with(['user', 'job'])
+            ->with(['worker', 'job'])
             ->latest()
             ->take(10)
             ->get();

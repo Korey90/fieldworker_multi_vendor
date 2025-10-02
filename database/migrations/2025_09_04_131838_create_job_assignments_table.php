@@ -30,7 +30,8 @@ return new class extends Migration
             $table->foreign('worker_id')->references('id')->on('workers')->onDelete('cascade');
             
             // Add unique constraint for job_id + worker_id
-            $table->unique(['job_id', 'worker_id']);
+            //$table->primary(['job_id', 'worker_id']);
+            //$table->unique(['job_id', 'worker_id']);
 
         });
     }

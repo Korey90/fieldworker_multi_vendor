@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -45,6 +46,19 @@ class Job extends Model
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+    public function workers(): BelongsToMany
+    {
+        return $this->belongsToMany(Worker::class, 'job_assignments', 'job_id', 'worker_id')
+                    ->withTimestamps()
+                    ->whereNull('job_assignments.deleted_at'); // Ignore soft deleted assignments
+    }
+
+    public function forms(): BelongsToMany
+    {
+        return $this->belongsToMany(Form::class, 'job_forms', 'job_id', 'form_id')
+                    ->withPivot('order', 'is_required')
+                    ->withTimestamps();
     }
 
     public function user(): HasMany

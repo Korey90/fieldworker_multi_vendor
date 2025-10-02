@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,9 +31,14 @@ export default function FormFiller({
 }: FormFillerProps) {
     const [formData, setFormData] = useState<Record<string, any>>(initialData);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const prevInitialDataRef = useRef<Record<string, any> | undefined>(undefined);
 
     useEffect(() => {
-        setFormData(initialData);
+        // Only update if initialData prop actually changed (not formData state)
+        if (JSON.stringify(prevInitialDataRef.current) !== JSON.stringify(initialData)) {
+            setFormData(initialData);
+            prevInitialDataRef.current = initialData;
+        }
     }, [initialData]);
 
     const handleInputChange = (fieldName: string, value: any) => {

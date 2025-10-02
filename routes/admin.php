@@ -278,6 +278,8 @@ Route::middleware(['auth', 'admin'])
             ->name('index');
         Route::get('/create', [FormResponseController::class, 'create'])
             ->name('create');
+        Route::get('/create-new', [FormResponseController::class, 'createNew'])
+            ->name('create-new');
         Route::post('/', [FormResponseController::class, 'store'])
             ->name('store');
         Route::get('/{formResponse}', [FormResponseController::class, 'show'])

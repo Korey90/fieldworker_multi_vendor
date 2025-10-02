@@ -15,7 +15,7 @@ class FormResponse extends Model
     protected $fillable = [
         'form_id',
         'tenant_id',
-        'user_id', 
+        'worker_id', 
         'job_id',
         'response_data',
         'is_submitted',
@@ -36,6 +36,11 @@ class FormResponse extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function worker(): BelongsTo
+    {
+        return $this->belongsTo(Worker::class);
     }
 
     public function job(): BelongsTo

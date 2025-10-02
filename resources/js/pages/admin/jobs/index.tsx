@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
     Search, 
     Plus, 
@@ -19,7 +21,9 @@ import {
     Trash2,
     MoreHorizontal,
     Briefcase,
-    AlertTriangle
+    AlertTriangle,
+    Grid3X3,
+    List
 } from 'lucide-react';
 import { type BreadcrumbItem, type Job, type PaginatedData, type Location } from '@/types';
 
@@ -46,28 +50,63 @@ export default function JobsIndex({
     statuses = {} 
 }: JobsIndexProps) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
-    const [selectedStatus, setSelectedStatus] = useState(filters.status || '');
-    const [selectedLocation, setSelectedLocation] = useState(filters.location_id || '');
+    const [selectedStatus, setSelectedStatus] = useState(filters.status || 'all');
+    const [selectedLocation, setSelectedLocation] = useState(filters.location_id || 'all');
+    const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
+    // Debounced search effect - tylko dla wyszukiwania tekstowego
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (searchTerm !== (filters.search || '')) {
+                applyFilters();
+            }
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm]);
+
+    // Natychmiastowe filtrowanie dla select-ów
+    useEffect(() => {
+        if (selectedStatus !== (filters.status || 'all')) {
+            applyFilters();
+        }
+    }, [selectedStatus]);
+
+    useEffect(() => {
+        if (selectedLocation !== (filters.location_id || 'all')) {
+            applyFilters();
+        }
+    }, [selectedLocation]);
+
+    const applyFilters = () => {
+        const params = new URLSearchParams();
+        
+        if (searchTerm) params.set('search', searchTerm);
+        if (selectedStatus && selectedStatus !== 'all') params.set('status', selectedStatus);
+        if (selectedLocation && selectedLocation !== 'all') params.set('location_id', selectedLocation);
+        
+        router.get(route('admin.jobs.index'), Object.fromEntries(params), {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
 
     const handleSearch = () => {
-        router.get('/admin/jobs', {
-            search: searchTerm,
-            status: selectedStatus,
-            location_id: selectedLocation,
-        }, {
+        applyFilters();
+    };
+
+    const clearFilters = () => {
+        setSearchTerm('');
+        setSelectedStatus('all');
+        setSelectedLocation('all');
+        router.get(route('admin.jobs.index'), {}, {
             preserveState: true,
-            replace: true,
+            preserveScroll: true,
         });
     };
 
     const handleReset = () => {
-        setSearchTerm('');
-        setSelectedStatus('');
-        setSelectedLocation('');
-        router.get('/admin/jobs', {}, {
-            preserveState: true,
-            replace: true,
-        });
+        clearFilters();
     };
 
     const getStatusColor = (status: string) => {
@@ -148,145 +187,267 @@ export default function JobsIndex({
                     </div>
                 </div>
 
-                {/* Filters */}
+                {/* Filters and Search */}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center space-x-2">
-                            <Filter className="h-5 w-5" />
-                            <span>Filter Jobs</span>
+                            <Search className="h-5 w-5" />
+                            <span>Filtry (filtrowanie na żywo)</span>
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <div>
                                 <Input
-                                    placeholder="Search jobs..."
+                                    placeholder="Szukaj zadań..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    className="pl-10"
                                 />
                             </div>
+                            
+                            <div>
+                                <Select 
+                                    value={selectedStatus} 
+                                    onValueChange={(value) => setSelectedStatus(value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Wszystkie statusy" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Wszystkie statusy</SelectItem>
+                                        {Object.entries(statuses).map(([key, label]) => (
+                                            <SelectItem key={key} value={key}>
+                                                {label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                            <select
-                                value={selectedStatus}
-                                onChange={(e) => setSelectedStatus(e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <option value="">All Statuses</option>
-                                {Object.entries(statuses).map(([key, label]) => (
-                                    <option key={key} value={key}>{label}</option>
-                                ))}
-                            </select>
+                            <div>
+                                <Select 
+                                    value={selectedLocation} 
+                                    onValueChange={(value) => setSelectedLocation(value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Wszystkie lokalizacje" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Wszystkie lokalizacje</SelectItem>
+                                        {locations.map((location) => (
+                                            <SelectItem key={location.id} value={location.id.toString()}>
+                                                {location.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                            <select
-                                value={selectedLocation}
-                                onChange={(e) => setSelectedLocation(e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <option value="">All Locations</option>
-                                {locations.map((location) => (
-                                    <option key={location.id} value={location.id}>{location.name}</option>
-                                ))}
-                            </select>
+                            <div>
+                                {/* Placeholder for future filters */}
+                            </div>
 
-                            <div className="flex space-x-2">
-                                <Button onClick={handleSearch} size="sm" className="flex-1">
-                                    <Search className="h-4 w-4 mr-2" />
-                                    Search
+                            <div className="flex items-center justify-between space-x-2">
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={clearFilters}
+                                    disabled={!searchTerm && selectedStatus === 'all' && selectedLocation === 'all'}
+                                >
+                                    Wyczyść filtry
                                 </Button>
-                                <Button onClick={handleReset} variant="outline" size="sm">
-                                    Reset
-                                </Button>
+                                <div className="flex border rounded-md">
+                                    <Button
+                                        type="button"
+                                        variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => setViewMode('grid')}
+                                        className="rounded-r-none"
+                                    >
+                                        <Grid3X3 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={viewMode === 'table' ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => setViewMode('table')}
+                                        className="rounded-l-none"
+                                    >
+                                        <List className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Jobs Grid */}
+                {/* Jobs Views */}
                 {jobs?.data && jobs.data.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {jobs.data.map((job) => (
-                            <Card key={job.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                                <CardHeader className="pb-3">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center space-x-2 mb-2">
-                                                <Badge className={getStatusColor(job.status)}>
-                                                    {getPriorityIcon(job.status)}
-                                                    <span className="ml-1">{statuses[job.status]}</span>
-                                                </Badge>
-                                            </div>
-                                            <CardTitle className="text-lg line-clamp-2 mb-2">
-                                                {job.title}
-                                            </CardTitle>
-                                            <p className="text-sm text-muted-foreground line-clamp-2">
-                                                {job.description}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="pt-0">
-                                    <div className="space-y-3">
-                                        {/* Location */}
-                                        {job.location && (
-                                            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                                                <MapPin className="h-4 w-4" />
-                                                <span>{job.location.name}</span>
-                                            </div>
-                                        )}
-
-                                        {/* Scheduled Date */}
-                                        {job.scheduled_at && (
-                                            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                                                <Calendar className="h-4 w-4" />
-                                                <span>{formatDate(job.scheduled_at)}</span>
-                                            </div>
-                                        )}
-
-                                        {/* Assigned Workers */}
-                                        {job.assignments && job.assignments.length > 0 && (
-                                            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                                                <Users className="h-4 w-4" />
-                                                <span>{job.assignments.length} worker(s) assigned</span>
-                                            </div>
-                                        )}
-
-                                        {/* Actions */}
-                                        <div className="flex justify-between items-center pt-2 border-t">
-                                            <div className="text-xs text-muted-foreground">
-                                                Created: {formatDate(job.created_at)}
-                                            </div>
-                                            <div className="flex space-x-1">
-                                                <Link href={`/admin/jobs/${job.id}`}>
-                                                    <Button variant="ghost" size="sm">
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                </Link>
-                                                <Link href={`/admin/jobs/${job.id}/edit`}>
-                                                    <Button variant="ghost" size="sm">
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                </Link>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        if (confirm('Are you sure you want to delete this job?')) {
-                                                            router.delete(`/admin/jobs/${job.id}`);
-                                                        }
-                                                    }}
-                                                >
-                                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                                </Button>
+                    viewMode === 'grid' ? (
+                        /* Grid View */
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {jobs.data.map((job) => (
+                                <Card key={job.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                                    <CardHeader className="pb-3">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center space-x-2 mb-2">
+                                                    <Badge className={getStatusColor(job.status)}>
+                                                        {getPriorityIcon(job.status)}
+                                                        <span className="ml-1">{statuses[job.status]}</span>
+                                                    </Badge>
+                                                </div>
+                                                <CardTitle className="text-lg line-clamp-2 mb-2">
+                                                    {job.title}
+                                                </CardTitle>
+                                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                                    {job.description}
+                                                </p>
                                             </div>
                                         </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-0">
+                                        <div className="space-y-3">
+                                            {/* Location */}
+                                            {job.location && (
+                                                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                                    <MapPin className="h-4 w-4" />
+                                                    <span>{job.location.name}</span>
+                                                </div>
+                                            )}
+
+                                            {/* Scheduled Date */}
+                                            {job.scheduled_at && (
+                                                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                                    <Calendar className="h-4 w-4" />
+                                                    <span>{formatDate(job.scheduled_at)}</span>
+                                                </div>
+                                            )}
+
+                                            {/* Assigned Workers */}
+                                            {job.assignments && job.assignments.length > 0 && (
+                                                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                                    <Users className="h-4 w-4" />
+                                                    <span>{job.assignments.length} worker(s) assigned</span>
+                                                </div>
+                                            )}
+
+                                            {/* Actions */}
+                                            <div className="flex justify-between items-center pt-2 border-t">
+                                                <div className="text-xs text-muted-foreground">
+                                                    Created: {formatDate(job.created_at)}
+                                                </div>
+                                                <div className="flex space-x-1">
+                                                    <Link href={`/admin/jobs/${job.id}`}>
+                                                        <Button variant="ghost" size="sm">
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
+                                                    <Link href={`/admin/jobs/${job.id}/edit`}>
+                                                        <Button variant="ghost" size="sm">
+                                                            <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            if (confirm('Are you sure you want to delete this job?')) {
+                                                                router.delete(`/admin/jobs/${job.id}`);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    ) : (
+                        /* Table View */
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Jobs Overview - Table View</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Job Title</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>Location</TableHead>
+                                            <TableHead>Scheduled</TableHead>
+                                            <TableHead>Workers</TableHead>
+                                            <TableHead>Created</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {jobs.data.map((job) => (
+                                            <TableRow key={job.id}>
+                                                <TableCell>
+                                                    <div>
+                                                        <div className="font-medium">{job.title}</div>
+                                                        <div className="text-sm text-muted-foreground line-clamp-1">
+                                                            {job.description}
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge className={getStatusColor(job.status)}>
+                                                        {getPriorityIcon(job.status)}
+                                                        <span className="ml-1">{statuses[job.status]}</span>
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>{job.location?.name || 'Not assigned'}</TableCell>
+                                                <TableCell className="text-sm">
+                                                    {job.scheduled_at ? formatDate(job.scheduled_at) : 'Not scheduled'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {job.assignments && job.assignments.length > 0 
+                                                        ? `${job.assignments.length} worker(s)` 
+                                                        : 'Unassigned'
+                                                    }
+                                                </TableCell>
+                                                <TableCell className="text-sm text-muted-foreground">
+                                                    {formatDate(job.created_at)}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end space-x-2">
+                                                        <Link href={`/admin/jobs/${job.id}`}>
+                                                            <Button variant="ghost" size="sm">
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                        </Link>
+                                                        <Link href={`/admin/jobs/${job.id}/edit`}>
+                                                            <Button variant="ghost" size="sm">
+                                                                <Edit className="h-4 w-4" />
+                                                            </Button>
+                                                        </Link>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                if (confirm('Are you sure you want to delete this job?')) {
+                                                                    router.delete(`/admin/jobs/${job.id}`);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    )
                 ) : (
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center py-12">

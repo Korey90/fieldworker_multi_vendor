@@ -15,7 +15,6 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('tenant_id');
             $table->uuid('location_id')->nullable();
-            $table->uuid('assigned_user_id')->nullable();
             
             $table->string('title');
             $table->text('description')->nullable();
@@ -29,7 +28,6 @@ return new class extends Migration
             
             $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
             $table->foreign('location_id')->references('id')->on('locations')->onDelete('set null');
-            $table->foreign('assigned_user_id')->references('id')->on('users')->onDelete('set null');
         });
     }
 

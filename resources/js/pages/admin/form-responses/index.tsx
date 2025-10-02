@@ -1,25 +1,25 @@
 import { Head, router } from '@inertiajs/react';
 import { PlusIcon, FilterIcon, SearchIcon, DownloadIcon } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
-import type { FormResponse, Form, Tenant, User } from '@/types';
+import type { FormResponse, Form, Tenant, Worker } from '@/types';
 
 interface AdminFormResponsesIndexProps {
     responses: {
         data: (FormResponse & {
             form: Form & { tenant: Tenant };
-            user: User;
+            worker: Worker;
         })[];
         meta: any;
         links: any;
     };
     forms: (Form & { tenant: Tenant })[];
     tenants: Tenant[];
-    users: User[];
+    workers: Worker[];
     filters: {
         search?: string;
         form_id?: string;
         tenant_id?: string;
-        user_id?: string;
+        worker_id?: string;
         status?: string;
         sort?: string;
         direction?: string;
@@ -30,7 +30,7 @@ export default function AdminFormResponsesIndex({
     responses, 
     forms, 
     tenants, 
-    users, 
+    workers, 
     filters 
 }: AdminFormResponsesIndexProps) {
     const handleSearch = (search: string) => {
@@ -120,15 +120,15 @@ export default function AdminFormResponsesIndex({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">User</label>
+                            <label className="block text-sm font-medium mb-1">Worker</label>
                             <select
-                                value={filters.user_id || ''}
-                                onChange={(e) => handleFilter('user_id', e.target.value)}
+                                value={filters.worker_id || ''}
+                                onChange={(e) => handleFilter('worker_id', e.target.value)}
                                 className="w-full border rounded px-3 py-2"
                             >
-                                <option value="">All Users</option>
-                                {users.map((user) => (
-                                    <option key={user.id} value={user.id.toString()}>{user.name}</option>
+                                <option value="">All Workers</option>
+                                {workers.map((worker) => (
+                                    <option key={worker.id} value={worker.id.toString()}>{worker.first_name}</option>
                                 ))}
                             </select>
                         </div>
@@ -155,11 +155,18 @@ export default function AdminFormResponsesIndex({
                                 Export
                             </button>
                             <a
+                                href={route('admin.form-responses.create-new')}
+                                className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
+                            >
+                                <PlusIcon className="h-4 w-4" />
+                                New Response
+                            </a>
+                            <a
                                 href={route('admin.form-responses.create')}
                                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
                             >
                                 <PlusIcon className="h-4 w-4" />
-                                Create
+                                Create (Legacy)
                             </a>
                         </div>
                     </div>
@@ -172,7 +179,7 @@ export default function AdminFormResponsesIndex({
                             <tr>
                                 <th className="text-left p-4">ID</th>
                                 <th className="text-left p-4">Form</th>
-                                <th className="text-left p-4">User</th>
+                                <th className="text-left p-4">Worker</th>
                                 <th className="text-left p-4">Tenant</th>
                                 <th 
                                     className="text-left p-4 cursor-pointer hover:bg-gray-100"
@@ -210,8 +217,8 @@ export default function AdminFormResponsesIndex({
                                     </td>
                                     <td className="p-4">
                                         <div>
-                                            <div className="font-medium">{response.user.name}</div>
-                                            <div className="text-sm text-gray-500">{response.user.email}</div>
+                                            <div className="font-medium">{response.worker.first_name}</div>
+                                            <div className="text-sm text-gray-500">{response.worker.email}</div>
                                         </div>
                                     </td>
                                     <td className="p-4">

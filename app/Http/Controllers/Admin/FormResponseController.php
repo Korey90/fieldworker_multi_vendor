@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Form;
 use App\Models\FormResponse;
 use App\Models\Tenant;
-use App\Models\User;
+use App\Models\Worker;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,12 +19,12 @@ class FormResponseController extends Controller
     public function index(Request $request): Response
     {
         $responses = FormResponse::query()
-            ->with(['form.tenant', 'user', 'job'])
+            ->with(['form.tenant', 'worker', 'job'])
             ->when($request->search, function ($query, $search) {
                 $query->whereHas('form', function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%");
-                })->orWhereHas('user', function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
+                })->orWhereHas('worker', function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%");
                 });
             })
@@ -36,8 +36,8 @@ class FormResponseController extends Controller
                     $q->where('tenant_id', $tenantId);
                 });
             })
-            ->when($request->user_id, function ($query, $userId) {
-                $query->where('user_id', $userId);
+            ->when($request->worker_id, function ($query, $workerId) {
+                $query->where('worker_id', $workerId);
             })
             ->when($request->status, function ($query, $status) {
                 if ($status === 'submitted') {
@@ -59,17 +59,21 @@ class FormResponseController extends Controller
             ->orderBy('name')
             ->get();
 
-        $users = User::select('id', 'name', 'email')
-            ->orderBy('name')
+        $workers = Worker::select('id', 'first_name', 'email')
+            ->orderBy('first_name')
             ->limit(100)
             ->get();
+
+
+
+           // dd($forms, $tenants, $workers, $responses);
 
         return Inertia::render('admin/form-responses/index', [
             'responses' => $responses,
             'forms' => $forms,
             'tenants' => $tenants,
-            'users' => $users,
-            'filters' => $request->only(['search', 'form_id', 'tenant_id', 'user_id', 'status', 'sort', 'direction']),
+            'workers' => $workers,
+            'filters' => $request->only(['search', 'form_id', 'tenant_id', 'worker_id', 'status', 'sort', 'direction']),
         ]);
     }
 
@@ -83,13 +87,47 @@ class FormResponseController extends Controller
             ->orderBy('name')
             ->get();
 
-        $users = User::select('id', 'name', 'email')
-            ->orderBy('name')
+        $workers = Worker::select('id', 'first_name', 'email')
+            ->orderBy('first_name')
             ->get();
 
         return Inertia::render('admin/form-responses/create', [
             'forms' => $forms,
-            'users' => $users,
+            'workers' => $workers,
+            
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource with step-by-step workflow.
+     */
+    public function createNew(Request $request): Response
+    {
+        $tenants = Tenant::select('id', 'name', 'sector')->orderBy('name')->get();
+        
+        $jobs = [];
+        
+        // Load all jobs with their tenants, forms and workers
+        $jobs = \App\Models\Job::with([
+            'tenant:id,name,sector', 
+            'forms:id,name,type,tenant_id,schema',
+            'workers:id,first_name,last_name,email'
+        ])
+            ->select('id', 'title', 'description', 'status', 'scheduled_at', 'tenant_id')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($job) {
+                // Ensure tenant has sector field for our interface
+                $job->tenant->sector = $job->tenant->sector ?? 'Unknown';
+                return $job;
+            });
+
+        return Inertia::render('admin/form-responses/create-new', [
+            'tenants' => $tenants,
+            'jobs' => $jobs,
+            'selectedTenant' => $request->tenant,
+            'selectedJob' => $request->job,
+            'selectedForm' => $request->form,
         ]);
     }
 
@@ -98,14 +136,24 @@ class FormResponseController extends Controller
      */
     public function store(Request $request)
     {
+        //dd($request->all());
         $validated = $request->validate([
             'form_id' => 'required|exists:forms,id',
-            'user_id' => 'required|exists:users,id',
-            'data' => 'required|array',
+            'job_id' => 'nullable|exists:tenant_jobs,id',
+            'worker_id' => 'nullable|exists:workers,id',
+            'tenant_id' => 'required|exists:tenants,id',
+            'response_data' => 'required|array',
             'is_submitted' => 'boolean',
         ]);
 
-        FormResponse::create($validated);
+        $formResponse = FormResponse::create($validated);
+
+        if($validated['is_submitted'] ?? false) {
+            // If the form is submitted, set the submitted_at timestamp
+            $formResponse->update([
+                'submitted_at' => now(),
+            ]);
+        }
 
         return redirect()->route('admin.form-responses.index')
             ->with('success', 'Form response created successfully.');
@@ -116,7 +164,7 @@ class FormResponseController extends Controller
      */
     public function show(FormResponse $formResponse): Response
     {
-        $formResponse->load(['form.tenant', 'user', 'job']);
+        $formResponse->load(['form.tenant', 'worker', 'job']);
 
         return Inertia::render('admin/form-responses/show', [
             'response' => $formResponse,
@@ -136,6 +184,7 @@ class FormResponseController extends Controller
 
         return Inertia::render('admin/form-responses/edit', [
             'response' => $formResponse,
+            'form' => $formResponse->form,
             'users' => $users,
         ]);
     }
@@ -146,8 +195,7 @@ class FormResponseController extends Controller
     public function update(Request $request, FormResponse $formResponse)
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'data' => 'required|array',
+            'response_data' => 'required|array',
             'is_submitted' => 'boolean',
         ]);
 

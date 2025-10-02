@@ -240,7 +240,7 @@ export default function WorkersIndex({ workers, filters, tenants, locations, ski
             default:
                 return 'Unknown';
         }
-    };
+    }; 
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

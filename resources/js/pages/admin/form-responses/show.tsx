@@ -1,12 +1,12 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeftIcon, EditIcon, TrashIcon, SendIcon } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
-import type { FormResponse, Form, Tenant, User, Job } from '@/types';
+import type { FormResponse, Form, Tenant, User, Job, Worker } from '@/types';
 
 interface AdminFormResponseShowProps {
     response: FormResponse & {
         form: Form & { tenant: Tenant };
-        user: User;
+        worker?: Worker;
         job?: Job;
     };
 }
@@ -87,7 +87,7 @@ export default function AdminFormResponseShow({ response }: AdminFormResponseSho
                             <div>
                                 <h1 className="text-2xl font-bold">Response #{response.id}</h1>
                                 <p className="text-gray-600">
-                                    Form: {response.form.name} • User: {response.user.name}
+                                    Form: {response.form.name} • Worker: {response.worker ? `${response.worker.first_name} ${response.worker.last_name}` : 'No worker assigned'}
                                 </p>
                             </div>
                         </div>
@@ -265,12 +265,12 @@ export default function AdminFormResponseShow({ response }: AdminFormResponseSho
                             </div>
                             <div className="p-6 space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                    <div className="text-gray-900">{response.user.name}</div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Worker Name</label>
+                                    <div className="text-gray-900">{response.worker ? `${response.worker.first_name} ${response.worker.last_name}` : 'No worker assigned'}</div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                    <div className="text-gray-900">{response.user.email}</div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Worker Email</label>
+                                    <div className="text-gray-900">{response.worker?.email || 'No email provided'}</div>
                                 </div>
                                 {response.job && (
                                     <div>

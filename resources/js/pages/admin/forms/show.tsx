@@ -1,18 +1,18 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeftIcon, EditIcon, CopyIcon, TrashIcon, EyeIcon } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
-import type { Form, FormResponse, Tenant, User, Job } from '@/types';
+import type { Form, FormResponse, Tenant, Worker, Job } from '@/types';
 
 interface AdminFormShowProps {
     form: Form & {
         tenant: Tenant;
         responses: (FormResponse & {
-            user: User;
+            worker: Worker;
             job?: Job;
         })[];
     };
     recentResponses: (FormResponse & {
-        user: User;
+        worker: Worker;
         job?: Job;
     })[];
     stats: {
@@ -169,7 +169,7 @@ export default function AdminFormShow({ form, recentResponses, stats }: AdminFor
                                     {recentResponses.map((response) => (
                                         <div key={response.id} className="border rounded-lg p-4">
                                             <div className="flex items-center justify-between mb-2">
-                                                <div className="font-medium">{response.user.name}</div>
+                                                <div className="font-medium">{response.worker.first_name}</div>
                                                 <div className="flex items-center gap-2">
                                                     <span className={`text-xs px-2 py-1 rounded-full ${
                                                         response.is_submitted 
@@ -187,7 +187,7 @@ export default function AdminFormShow({ form, recentResponses, stats }: AdminFor
                                                 </div>
                                             </div>
                                             <div className="text-sm text-gray-600">
-                                                {response.user.email} • {new Date(response.created_at).toLocaleDateString()}
+                                                {response.worker.email} • {new Date(response.created_at).toLocaleDateString()}
                                             </div>
                                             {response.job && (
                                                 <div className="text-xs text-gray-500 mt-1">

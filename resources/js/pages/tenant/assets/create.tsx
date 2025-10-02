@@ -54,7 +54,7 @@ export default function CreateEdit({ asset, locations, assetTypes }: Props) {
         purchase_cost: asset?.purchase_cost?.toString() || '',
         current_value: asset?.current_value?.toString() || '',
         status: asset?.status || 'active',
-        location_id: asset?.location_id?.toString() || '',
+        location_id: asset?.location_id?.toString() || 'no_location',
         data: asset?.data || {},
     });
 
@@ -118,7 +118,7 @@ export default function CreateEdit({ asset, locations, assetTypes }: Props) {
             ...formData,
             purchase_cost: formData.purchase_cost ? Number(formData.purchase_cost) : null,
             current_value: formData.current_value ? Number(formData.current_value) : null,
-            location_id: formData.location_id ? Number(formData.location_id) : null,
+            location_id: formData.location_id && formData.location_id !== 'no_location' ? Number(formData.location_id) : null,
         };
 
         try {
@@ -362,7 +362,7 @@ export default function CreateEdit({ asset, locations, assetTypes }: Props) {
                                         <SelectValue placeholder="Select location (optional)" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">No Location</SelectItem>
+                                        <SelectItem value="no_location">No Location</SelectItem>
                                         {locations.map((location) => (
                                             <SelectItem key={location.id} value={location.id.toString()}>
                                                 {location.name}

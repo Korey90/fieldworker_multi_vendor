@@ -160,13 +160,44 @@ export interface Sector {
 
 export interface Worker {
     id: string;
-    user_id: number;
-    tenant_id: number;
-    created_at: string;
-    updated_at: string;
-    
-    // Relations
-    user: User;
+    tenant_id: string;
+    location_id?: string;
+    employee_number: string;
+    first_name: string;
+    last_name: string;
+    dob: string; // date of birth
+    insurance_number: string;
+    phone?: string;
+    email: string;
+    hire_date: string;
+    hourly_rate: number;
+    status: string;
+    data: string;
+    last_activity: string;
+    tenant: {
+        id: string;
+        name: string;
+    };
+    location?: {
+        name: string;
+        address: string;
+    };
+    skills: Array<{
+        id: string;
+        name: string;
+        level: number; // 1-5 scale
+    }>;
+    certifications: Array<{
+        id: string;
+        name: string;
+        expiry_date: string;
+        status: string;
+    }>;
+    current_job?: {
+        id: string;
+        title: string;
+        location: string;
+    };
 }
 
 export interface AuditLog {
@@ -186,10 +217,9 @@ export interface AuditLog {
 export interface Job {
     id: string;
     tenant_id: number;
+    location_id: number;
     title: string;
     description: string;
-    location_id: number;
-    assigned_user_id?: number;
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
     scheduled_at?: string;
     completed_at?: string;
@@ -201,6 +231,7 @@ export interface Job {
     // Relations
     tenant?: Tenant;
     location?: Location;
+    workers?: Worker[]; // Many-to-many through job_assignments
     assignments?: JobAssignment[];
     formResponses?: FormResponse[];
 }
@@ -211,15 +242,13 @@ export interface JobAssignment {
     worker_id: string;
     role: string;
     assigned_at: string;
-    status: 'assigned' | 'started' | 'completed' | 'cancelled';
+    status: 'assigned' | 'in_progress' | 'completed' | 'cancelled';
     created_at: string;
     updated_at: string;
     
     // Relations
-    worker?: {
-        id: string;
-        user: User;
-    };
+    ass
+    worker?: Worker;
     job?: Job;
 }
 

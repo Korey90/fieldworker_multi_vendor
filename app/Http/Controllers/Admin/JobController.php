@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Job;
+use App\Models\JobForm;
 use App\Models\User;
 use App\Models\Location;
 use App\Models\Tenant;
@@ -20,7 +21,7 @@ class JobController extends Controller
      */
     public function index(Request $request): Response
     {
-                $query = Job::with(['location', 'assignments.worker.user', 'tenant'])
+                $query = Job::with(['location', 'assignments.worker', 'tenant'])
             ->when($request->search, function ($query, $search) {
                 return $query->where('title', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
@@ -55,9 +56,9 @@ class JobController extends Controller
     {
         return Inertia::render('admin/jobs/create', [
             'locations' => Location::all(['id', 'name', 'address']),
-            'users' => User::whereHas('roles', function ($query) {
-                $query->whereIn('name', ['worker', 'manager']);
-            })->whereHas('worker')->get(['id', 'name', 'email']),
+            'workers' => Worker::with(['skills', 'certifications'])->get(['id', 'first_name', 'last_name', 'email', 'tenant_id']),
+            'forms' => \App\Models\Form::all(['id', 'name', 'type', 'tenant_id']),
+            'tenants' => Tenant::all(['id', 'name', 'sector']),
         ]);
     }
 
@@ -67,44 +68,46 @@ class JobController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'tenant_id' => 'required|exists:tenants,id',
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'location_id' => 'required|exists:locations,id',
-            'assigned_user_ids' => 'nullable|array',
-            'assigned_user_ids.*' => 'exists:users,id',
+            'assigned_worker_ids' => 'nullable|array',
+            'assigned_worker_ids.*' => 'exists:workers,id',
             'status' => 'required|in:pending,in_progress,completed,cancelled',
             'scheduled_at' => 'nullable|date',
             'data' => 'nullable|array',
+            'required_forms' => 'nullable|array',
+            'required_forms.*' => 'exists:forms,id',
         ]);
 
-        $validated['tenant_id'] = auth()->user()->tenant_id;
-        
-        // Remove assigned_user_ids from validated data before creating job
-        $assignedUserIds = $validated['assigned_user_ids'] ?? [];
-        unset($validated['assigned_user_ids']);
+        // Remove assigned_worker_ids from validated data before creating job
+        $assignedWorkerIds = $validated['assigned_worker_ids'] ?? [];
+        unset($validated['assigned_worker_ids']);
 
         $job = Job::create($validated);
 
         // Create job assignments for selected workers
-        if (!empty($assignedUserIds)) {
-            // Find all workers by user_ids in one query
-            $workers = Worker::whereIn('user_id', $assignedUserIds)->get();
-            
-            $assignments = [];
-            foreach ($workers as $worker) {
-                $assignments[] = [
-                    'id' => (string) \Illuminate\Support\Str::uuid(),
+        if (!empty($assignedWorkerIds)) {
+            // Use worker IDs directly since they're coming from the worker table
+            foreach ($assignedWorkerIds as $workerId) {
+                JobAssignment::create([
                     'job_id' => $job->id,
-                    'worker_id' => $worker->id,
+                    'worker_id' => $workerId,
                     'status' => 'assigned',
                     'assigned_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+                ]);
             }
-            
-            if (!empty($assignments)) {
-                JobAssignment::insert($assignments);
+        }
+
+        if (!empty($validated['required_forms'])) {
+            foreach ($validated['required_forms'] as $index => $formId) {
+                JobForm::create([
+                    'job_id' => $job->id,
+                    'form_id' => $formId,
+                    'order' => $index + 1,
+                    'is_required' => true,
+                ]);
             }
         }
 
@@ -121,16 +124,17 @@ class JobController extends Controller
             'location',
             'assignments.worker.skills',
             'assignments.worker.certifications',
-            'assignments.worker.user',
+            'assignments.worker',
             'tenant',
-            'formResponses.form'
+            'formResponses.form',
+            'workers',
+            'forms.responses.worker', // Load form responses if needed
         ]);
 
         return Inertia::render('admin/jobs/show', [
             'job' => $job,
-            'availableWorkers' => User::whereHas('roles', function ($query) {
-                $query->where('name', 'worker');
-            })->with(['worker.skills', 'worker.certifications'])->get(),
+            'workers' => $job->workers,
+            'forms' => $job->forms,
         ]);
     }
 
@@ -139,14 +143,14 @@ class JobController extends Controller
      */
     public function edit(Job $job): Response
     {
-        $job->load(['location', 'assignments.user']);
+        $job->load(['location', 'assignments.worker', 'workers', 'tenant', 'forms']);
 
         return Inertia::render('admin/jobs/edit', [
             'job' => $job,
             'locations' => Location::all(['id', 'name', 'address']),
-            'users' => User::whereHas('roles', function ($query) {
-                $query->whereIn('name', ['worker', 'manager']);
-            })->get(['id', 'name', 'email']),
+            'workers' => Worker::with(['skills', 'certifications'])->get(['id', 'first_name', 'last_name', 'email', 'tenant_id']),
+            'forms' => \App\Models\Form::all(['id', 'name', 'type', 'tenant_id']),
+            'tenants' => Tenant::all(['id', 'name', 'sector']),
         ]);
     }
 
@@ -156,17 +160,69 @@ class JobController extends Controller
     public function update(Request $request, Job $job)
     {
         $validated = $request->validate([
+            'tenant_id' => 'required|exists:tenants,id',
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'location_id' => 'required|exists:locations,id',
-            'assigned_user_id' => 'nullable|exists:users,id',
+            'assigned_worker_ids' => 'nullable|array',
+            'assigned_worker_ids.*' => 'exists:workers,id',
             'status' => 'required|in:pending,in_progress,completed,cancelled',
             'scheduled_at' => 'nullable|date',
-            'completed_at' => 'nullable|date',
             'data' => 'nullable|array',
+            'required_forms' => 'nullable|array',
+            'required_forms.*' => 'exists:forms,id',
         ]);
 
-        $job->update($validated);
+        // Remove arrays from basic update data
+        $jobData = collect($validated)->except(['assigned_worker_ids', 'required_forms'])->toArray();
+        $job->update($jobData);
+
+        // Sync assigned workers
+        if (isset($validated['assigned_worker_ids'])) {
+            $newWorkerIds = array_map('strval', $validated['assigned_worker_ids']);
+            
+            // Get current assigned worker IDs
+            $currentWorkerIds = $job->assignments()
+                ->whereNull('deleted_at')
+                ->pluck('worker_id')
+                ->map(fn($id) => (string) $id)
+                ->toArray();
+            
+            // Find workers to add (in new but not in current)
+            $workersToAdd = array_diff($newWorkerIds, $currentWorkerIds);
+            
+            // Find workers to remove (in current but not in new)
+            $workersToRemove = array_diff($currentWorkerIds, $newWorkerIds);
+            
+            // Remove assignments for workers no longer selected
+            if (!empty($workersToRemove)) {
+                $job->assignments()
+                    ->whereIn('worker_id', $workersToRemove)
+                    ->delete();
+            }
+            
+            // Add new assignments
+            foreach ($workersToAdd as $workerId) {
+                $job->assignments()->create([
+                    'worker_id' => $workerId,
+                    'role' => 'worker',
+                    'status' => 'assigned',
+                    'assigned_at' => now(),
+                ]);
+            }
+        } else {
+            // If no workers assigned, remove all assignments
+            $job->assignments()->delete();
+        }
+
+        // Sync required forms
+        if (isset($validated['required_forms'])) {
+            // Sync forms with the job using the many-to-many relationship
+            $job->forms()->sync($validated['required_forms']);
+        } else {
+            // If no forms required, detach all forms
+            $job->forms()->detach();
+        }
 
         return redirect()->route('admin.jobs.show', $job)
             ->with('success', 'Zadanie zostało zaktualizowane pomyślnie.');
